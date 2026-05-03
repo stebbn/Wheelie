@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - Maintenance{% endblock %}
+
+{% block content %}
+<div class="top-bar">
+    <div class="filter-controls">
+        <button type="button" id="new-maintenance-btn" class="btn-primary" style="margin-left: auto;">New Maintenance</button>
+    </div>
+</div>
+<h1>Maintenance Records</h1>
+<div class="content-grid">
+    <table>
+        <thead>
+            <tr>
+                <th>Bike</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Staff</th>
+                <th>Outcome</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for maint in maintenance %}
+            <tr>
+                <td><a href="{{ url_for('bikes.bike_detail', bid=maint['bike_id']) }}">{{ maint['bike_code'] }} - {{ maint['brand'] }} {{ maint['model'] }}</a></td>
+                <td>{{ maint['maintenance_type'].replace('_', ' ').title() }}</td>
+                <td>{{ maint['maintenance_date'] }}</td>
+                <td>{{ maint['description'] }}</td>
+                <td>{{ maint['staff_name'] }}</td>
+                <td><span class="status-badge">{{ maint['outcome'].replace('_', ' ').title() }}</span></td>
+                <td><a href="{{ url_for('maintenance.maintenance_detail', mid=maint['maintenance_id']) }}">Edit</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="maintenanceFormModal" tabindex="-1" aria-labelledby="maintenanceFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="maintenanceFormModalLabel">New Maintenance Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="maintenanceForm" action="{{ url_for('maintenance.new_maintenance') }}">
+                    <div class="mb-3">
+                        <label for="bike_id" class="form-label">Bike</label>
+                        <select class="form-select" id="bike_id" name="bike_id" required>
+                            <option value="">Select Bike...</option>
+                            {% for bike in bikes %}
+                            <option value="{{ bike['bike_id'] }}">{{ bike['bike_code'] }} - {{ bike['brand'] }} {{ bike['model'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="maintenance_date" class="form-label">Maintenance Date</label>
+                        <input type="date" class="form-control" id="maintenance_date" name="maintenance_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="maintenance_type" class="form-label">Maintenance Type</label>
+                        <select class="form-select" id="maintenance_type" name="maintenance_type" required>
+                            <option value="routine">Routine</option>
+                            <option value="repair">Repair</option>
+                            <option value="inspection">Inspection</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="outcome" class="form-label">Outcome</label>
+                        <select class="form-select" id="outcome" name="outcome" required>
+                            <option value="resolved">Resolved</option>
+                            <option value="parts_needed">Parts Needed</option>
+                            <option value="retired">Retired</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="maintenanceForm" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('new-maintenance-btn');
+        const modal = new bootstrap.Modal(document.getElementById('maintenanceFormModal'));
+        btn.addEventListener('click', () => modal.show());
+    });
+</script>
+{% endblock %}

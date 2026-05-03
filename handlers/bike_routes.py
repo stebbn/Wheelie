@@ -1,0 +1,46 @@
+from flask import Blueprint, render_template, request, redirect, url_for
+import modules.database as database
+
+bikes_bp = Blueprint('bikes', __name__, template_folder='templates')
+
+@bikes_bp.route('/bikes')
+def registry():
+    search = request.args.get('search', '')
+    status = request.args.get('status', 'all')
+    all_bikes = database.get().get_all_bikes(search, status)
+    return render_template('bike_registry.html', bikes=all_bikes, search=search, filter_status=status)
+
+@bikes_bp.route('/bike/<int:bid>')
+def bike_detail(bid):
+    bike = database.get().get_bike(bid)
+    return render_template('bike_detail.html', bike=bike)
+
+@bikes_bp.route('/bike/new', methods=['GET', 'POST'])
+def new_bike():
+    if request.method == 'POST':
+        data = {
+            'bike_code': request.form.get('bike_code'),
+            'brand': request.form.get('brand'),
+            'model': request.form.get('model'),
+            'size': request.form.get('size'),
+            'color': request.form.get('color')
+        }
+        bid = database.get().create_bike(data)
+        return redirect(url_for('bikes.bike_detail', bid=bid))
+    return render_template('forms/bike_form.html', bike=None)
+
+@bikes_bp.route('/bike/<int:bid>/edit', methods=['GET', 'POST'])
+def edit_bike(bid):
+    if request.method == 'POST':
+        data = {
+            'bike_code': request.form.get('bike_code'),
+            'brand': request.form.get('brand'),
+            'model': request.form.get('model'),
+            'size': request.form.get('size'),
+            'color': request.form.get('color')
+        }
+        database.get().update_bike(bid, data)
+        return redirect(url_for('bikes.bike_detail', bid=bid))
+    
+    bike = database.get().get_bike(bid)
+    return render_template('forms/bike_form.html', bike=bike)

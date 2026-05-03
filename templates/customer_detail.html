@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - Customer: {{ customer['first_name'] }} {{ customer['last_name'] }}{% endblock %}
+
+{% block content %}
+
+<h1>{{ customer['first_name'] }} {{ customer['last_name'] }}</h1>
+<div class="detail-container">
+    <div class="detail-section">
+        <h2>Customer Information</h2>
+        <form method="post" class="form">
+            <div class="form-group">
+                <label>First Name</label>
+                <input type="text" name="first_name" value="{{ customer['first_name'] }}" required>
+            </div>
+            <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" name="last_name" value="{{ customer['last_name'] }}" required>
+            </div>
+            <div class="form-group">
+                <label>Contact Number</label>
+                <input type="tel" name="contact_number" value="{{ customer['contact_number'] }}" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" value="{{ customer['email'] or '' }}">
+            </div>
+            <button type="submit" class="btn-primary">Update</button>
+            <a href="{{ url_for('customers.customers') }}" class="btn-secondary">Back</a>
+        </form>
+    </div>
+    
+    <div class="detail-section">
+        <h2>Statistics</h2>
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-label">Total Rentals</span>
+                <span class="stat-value">{{ stats['total_rentals'] }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Total Spent</span>
+                <span class="stat-value">₱{{ stats['total_spent'] }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="detail-section">
+        <h2>Recent Rentals</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Bike</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rental in rentals %}
+                <tr>
+                    <td>{{ rental['bike_code'] }} - {{ rental['brand'] }} {{ rental['model'] }}</td>
+                    <td>{{ rental['rental_start'] }}</td>
+                    <td>{{ rental['rental_end'] or '-' }}</td>
+                    <td>₱{{ rental['total_amount'] or '-' }}</td>
+                    <td>{{ rental['status'].title() }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

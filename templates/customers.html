@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - Customers{% endblock %}
+
+{% block content %}
+<div class="top-bar">
+    <form method="get" class="search-form">
+        <input type="text" name="search" placeholder="Search customers..." value="{{ search }}">
+        <button type="submit">Search</button>
+        <button type="button" id="add-customer-btn" class="btn-primary">Add Customer</button>
+    </form>
+</div>
+<h1>Customers</h1>
+<div class="content-grid">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Registered</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td>{{ customer['first_name'] }} {{ customer['last_name'] }}</td>
+                <td>{{ customer['contact_number'] }}</td>
+                <td>{{ customer['email'] or '-' }}</td>
+                <td>{{ customer['date_registered'] }}</td>
+                <td><a href="{{ url_for('customers.customer_detail', cid=customer['customer_id']) }}">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="customerFormModal" tabindex="-1" aria-labelledby="customerFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customerFormModalLabel">Add New Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="customerForm" action="{{ url_for('customers.new_customer') }}">
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact_number" class="form-label">Contact Number</label>
+                        <input type="tel" class="form-control" id="contact_number" name="contact_number" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="customerForm" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('add-customer-btn');
+        const modal = new bootstrap.Modal(document.getElementById('customerFormModal'));
+        btn.addEventListener('click', () => modal.show());
+    });
+</script>
+{% endblock %}

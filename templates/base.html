@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Wheelie{% endblock %}</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/fsquare_icon.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/rent_icon.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/current_rent.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/bike_icon.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/person_icon.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/payments_icon.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/maintainance_icon.png') }}">
+</head>
+
+<body>
+    <div class="home-screen">
+      
+        <div class="sidebar" expand="{{ 'true' if sidebar_expanded else 'false' }}">
+            <img class="sidebar-logo" src="{{url_for('static', filename='assets/imgs/Logo_mini.png') }}" alt="sidebar icon">
+            <div class="nav-indicator"></div>
+
+           <div class="nav-items">
+                <a href="{{ url_for('home') }}"                    
+                    class="nav-item" data-route="home">
+                    <img src="{{ url_for('static', filename='assets/imgs/fsquare_icon.png') }}"   alt="Dashboard">
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('rentals.rentals') }}"         
+                    class="nav-item" data-route="rentals.rentals">
+                    <img src="{{ url_for('static', filename='assets/imgs/current_rent.png') }}"     alt="Rentals">
+                    <span>Rentals</span>
+                </a>
+                <a href="{{ url_for('bikes.registry') }}"          
+                    class="nav-item" data-route="bikes.registry">
+                    <img src="{{ url_for('static', filename='assets/imgs/bike_icon.png') }}"       alt="Bikes">
+                    <span>Bikes</span>
+                </a>
+                <a href="{{ url_for('customers.customers') }}"     
+                    class="nav-item" data-route="customers.customers">
+                    <img src="{{ url_for('static', filename='assets/imgs/person_icon.png') }}"   alt="Customers">
+                    <span>Customers</span>
+                </a>
+                <a href="{{ url_for('payments.payments') }}"      
+                    class="nav-item" data-route="payments.payments">
+                    <img src="{{ url_for('static', filename='assets/imgs/payments_icon.png') }}"    alt="Payments">
+                    <span>Payments</span>
+                </a>
+                <a href="{{ url_for('maintenance.maintenance') }}" 
+                    class="nav-item" data-route="maintenance.maintenance">
+                    <img src="{{ url_for('static', filename='assets/imgs/maintainance_icon.png') }}" alt="Maintenance">
+                    <span>Maintenance</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+   <script>
+      document.addEventListener('DOMContentLoaded', function() { // sidebar state logic / highlighting thing
+        const sidebar = document.querySelector('.sidebar');
+        const navItems = document.querySelectorAll('.nav-item, .nav-item-top');
+        const navIndicator = document.querySelector('.nav-indicator');
+
+        function setSidebarCookie(state) {
+            document.cookie = `sidebarState=${state};path=/;max-age=31536000`;
+        }
+
+        function updateIndicator() {
+            const currentRoute = window.location.pathname;
+            let activeItem = null;
+
+            navItems.forEach(item => {
+                const href = item.getAttribute('href');
+                const isActive = href === currentRoute || 
+                                (href !== '/' && currentRoute.startsWith(href));
+
+                if (isActive) {
+                    activeItem = item;
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            if (activeItem && navIndicator) {
+                const navItemsEl = document.querySelector('.nav-items');
+                navIndicator.style.top = ((navItemsEl.offsetTop * 0.9) + activeItem.offsetTop) + 'px';
+                navIndicator.style.height = activeItem.offsetHeight + 'px';
+            }
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                sidebar.setAttribute('expand', 'true');
+                setSidebarCookie('expanded');
+              
+            });
+        });
+
+        sidebar.addEventListener('click', function(event) {
+            if (event.target !== sidebar) { return; }
+            if (sidebar.getAttribute('expand') === 'true') {
+                sidebar.setAttribute('expand', 'false');
+                setSidebarCookie('collapsed');
+            } else {
+                sidebar.setAttribute('expand', 'true');
+                setSidebarCookie('expanded');
+            }
+            updateIndicator();
+        });
+
+        document.addEventListener('click', function(event) {
+            if (sidebar.contains(event.target)) { return; }
+            if (sidebar.getAttribute('expand') === 'true') {
+                sidebar.setAttribute('expand', 'false');
+                setSidebarCookie('collapsed');
+            }
+        });
+
+        const images = sidebar.querySelectorAll('img');
+        let loaded = 0;
+        if (images.length === 0) {
+            updateIndicator();
+        } else {
+            images.forEach(img => {
+                if (img.complete) {
+                    loaded++;
+                    if (loaded === images.length) updateIndicator();
+                } else {
+                    img.addEventListener('load', () => {
+                        loaded++;
+                        if (loaded === images.length) updateIndicator();
+                    });
+                }
+            });
+        }
+    });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flask-modals/dist/flask_modals.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle

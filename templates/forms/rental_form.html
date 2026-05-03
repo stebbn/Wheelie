@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - {% if rental %}Edit{% else %}New{% endif %} Rental{% endblock %}
+
+{% block content %}
+
+<div class="modal fade" id="rentalFormModal" tabindex="-1" aria-labelledby="rentalFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rentalFormModalLabel">{% if rental %}Edit Rental{% else %}Create New Rental{% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="rentalForm">
+                    <div class="mb-3">
+                        <label for="customer_id" class="form-label">Customer</label>
+                        <select class="form-select" id="customer_id" name="customer_id" required>
+                            <option value="">Select Customer...</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer['customer_id'] }}">{{ customer['first_name'] }} {{ customer['last_name'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bike_id" class="form-label">Bike</label>
+                        <select class="form-select" id="bike_id" name="bike_id" required>
+                            <option value="">Select Bike...</option>
+                            {% for bike in bikes %}
+                            <option value="{{ bike['bike_id'] }}">{{ bike['bike_code'] }} - {{ bike['brand'] }} {{ bike['model'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rental_start" class="form-label">Rental Start</label>
+                        <input type="datetime-local" class="form-control" id="rental_start" name="rental_start" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rental_rate" class="form-label">Daily Rate (₱)</label>
+                        <input type="number" class="form-control" id="rental_rate" name="rental_rate" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="rentalForm" class="btn btn-primary">Create Rental</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const rentalModal = new bootstrap.Modal(document.getElementById('rentalFormModal'));
+        rentalModal.show();
+
+        document.getElementById('rentalFormModal').addEventListener('hidden.bs.modal', function() {
+            window.location.href = '{{ url_for("rentals.rentals") }}';
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - Rental #{{ rental['rental_id'] }}{% endblock %}
+
+{% block content %}
+<h1>Rental #{{ rental['rental_id'] }}</h1>
+<div class="detail-container">
+    <div class="detail-section">
+        <h2>Rental Details</h2>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">Customer:</span>
+                <span class="value"><a href="{{ url_for('customers.customer_detail', cid=rental['customer_id']) }}">{{ rental['customer_name'] }}</a></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Bike:</span>
+                <span class="value">{{ rental['bike_code'] }} - {{ rental['brand'] }} {{ rental['model'] }} ({{ rental['size'] }})</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Staff:</span>
+                <span class="value">{{ rental['staff_name'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Status:</span>
+                <span class="value"><span class="status-badge status-{{ rental['status'] }}">{{ rental['status'].title() }}</span></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Start Date:</span>
+                <span class="value">{{ rental['rental_start'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">End Date:</span>
+                <span class="value">{{ rental['rental_end'] or 'Not Returned' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Daily Rate:</span>
+                <span class="value">₱{{ rental['rental_rate'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Total Amount:</span>
+                <span class="value">₱{{ rental['total_amount'] or 'Pending' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Notes:</span>
+                <span class="value">{{ rental['notes'] or '-' }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if rental['status'] == 'active' %}
+    <div class="detail-section">
+        <h2>Return Bike</h2>
+        <form method="post" class="form">
+            <div class="form-group">
+                <label>Return Date</label>
+                <input type="datetime-local" name="rental_end" required>
+            </div>
+            <div class="form-group">
+                <label>Total Amount (₱)</label>
+                <input type="number" name="total_amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label>Payment Method</label>
+                <select name="payment_method" required>
+                    <option value="cash">Cash</option>
+                    <option value="gcash">GCash</option>
+                    <option value="card">Card</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary">Process Return</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if payment %}
+    <div class="detail-section">
+        <h2>Payment</h2>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">Payment Date:</span>
+                <span class="value">{{ payment['payment_date'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Amount Paid:</span>
+                <span class="value">₱{{ payment['amount_paid'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Method:</span>
+                <span class="value">{{ payment['payment_method'].title() }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Status:</span>
+                <span class="value">{{ payment['payment_status'].title() }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('rentals.rentals') }}" class="btn-secondary">Back to Rentals</a>
+</div>
+{% endblock %}

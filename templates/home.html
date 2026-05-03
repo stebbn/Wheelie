@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <div class="stat-card">
+        <div class="stat-label">Active Rentals</div>
+        <div class="stat-value">{{ stats['active_rentals'] or 0 }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Overdue Rentals</div>
+        <div class="stat-value">{{ stats['overdue'] or 0 }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Available Bikes</div>
+        <div class="stat-value">{{ stats['bikes_available'] or 0 }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Today's Revenue</div>
+        <div class="stat-value">₱{{ stats['revenue_today'] or 67 }}</div>
+    </div>
+</div>
+
+{% endblock %}

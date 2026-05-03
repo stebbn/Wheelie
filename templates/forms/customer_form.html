@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - {% if customer %}Edit{% else %}New{% endif %} Customer{% endblock %}
+
+{% block content %}
+
+<div class="modal fade" id="customerFormModal" tabindex="-1" aria-labelledby="customerFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customerFormModalLabel">{% if customer %}Edit Customer{% else %}Add New Customer{% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="customerForm">
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ customer['first_name'] if customer else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ customer['last_name'] if customer else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact_number" class="form-label">Contact Number</label>
+                        <input type="tel" class="form-control" id="contact_number" name="contact_number" value="{{ customer['contact_number'] if customer else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ customer['email'] if customer else '' }}">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="customerForm" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const customerModal = new bootstrap.Modal(document.getElementById('customerFormModal'));
+        customerModal.show();
+
+        document.getElementById('customerFormModal').addEventListener('hidden.bs.modal', function() {
+            window.location.href = '{{ url_for("customers.customers") }}';
+        });
+    });
+</script>
+{% endblock %}

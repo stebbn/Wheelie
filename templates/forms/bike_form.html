@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - {% if bike %}Edit{% else %}New{% endif %} Bike{% endblock %}
+
+{% block content %}
+
+<div class="modal fade" id="bikeFormModal" tabindex="-1" aria-labelledby="bikeFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bikeFormModalLabel">{% if bike %}Edit Bike{% else %}Add New Bike{% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="bikeForm">
+                    <div class="mb-3">
+                        <label for="bike_code" class="form-label">Bike Code</label>
+                        <input type="text" class="form-control" id="bike_code" name="bike_code" value="{{ bike['bike_code'] if bike else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="brand" class="form-label">Brand</label>
+                        <input type="text" class="form-control" id="brand" name="brand" value="{{ bike['brand'] if bike else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="model" class="form-label">Model</label>
+                        <input type="text" class="form-control" id="model" name="model" value="{{ bike['model'] if bike else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="size" class="form-label">Size</label>
+                        <select class="form-select" id="size" name="size" required>
+                            <option value="">Select Size...</option>
+                            <option value="small" {% if bike and bike['size'] == 'small' %}selected{% endif %}>Small</option>
+                            <option value="medium" {% if bike and bike['size'] == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="large" {% if bike and bike['size'] == 'large' %}selected{% endif %}>Large</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="color" class="form-label">Color</label>
+                        <input type="text" class="form-control" id="color" name="color" value="{{ bike['color'] if bike else '' }}" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="bikeForm" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const bikeModal = new bootstrap.Modal(document.getElementById('bikeFormModal'));
+        bikeModal.show();
+
+        document.getElementById('bikeFormModal').addEventListener('hidden.bs.modal', function() {
+            window.location.href = '{{ url_for("bikes.registry") }}';
+        });
+    });
+</script>
+{% endblock %}

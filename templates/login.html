@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{url_for('static', filename='style.css') }}">
+    <title>Login</title>
+</head>
+<body>
+    <div class="login-screen">
+
+        <div class="logo-container">
+            <img class="login-logo" src="{{url_for('static', filename='assets/imgs/Logo.png') }}" alt="Wheelie Logo">
+        </div>
+
+       <form class="input-group" method="POST" action="/">
+            <input type="text" name="username" class="pill-input" placeholder="Username">
+            <input type="password" name="password" class="pill-input" placeholder="Password">
+            <input type="submit" value="Login" class="pill-input-button">
+            
+            {% if error %}
+                <p style="color: red; text-align: center; margin-top: 10px;">{{ error }}</p>
+            {% endif %}
+        </form>
+
+    </div>
+
+</body>
+</html>
