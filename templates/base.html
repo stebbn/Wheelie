@@ -6,7 +6,6 @@
     <title>{% block title %}Wheelie{% endblock %}</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='modals.css') }}">
-    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/fsquare_icon.png') }}">
@@ -143,6 +142,19 @@
                 }
             });
         }
+
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        async function closethatbar() {
+            await wait(200)
+            
+            if (sidebar.getAttribute('expand') === 'true') {
+                sidebar.setAttribute('expand', 'false');
+                setSidebarCookie('collapsed');
+            }
+        }
+
+        closethatbar();
     });
     </script>
 
