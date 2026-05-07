@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 import modules.appFileHandler as appFileHandler
 
-DB_PATH = appFileHandler.resource_path("modules/database.db")
+DB_PATH = appFileHandler.resource_path("data/database.db")
 db = None
 
 class Database:
