@@ -5,9 +5,10 @@
 {% block content %}
 <h1>Payments</h1>
 <div class="content-grid">
-    <table>
-        <thead>
-            <tr>
+    <div class="scroll-table-container">
+        <table>
+            <thead>
+                <tr>
                 <th>Rental ID</th>
                 <th>Customer</th>
                 <th>Bike</th>
@@ -31,5 +32,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

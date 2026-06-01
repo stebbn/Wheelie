@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - {% if staff_member %}Edit{% else %}New{% endif %} Staff{% endblock %}
+
+{% block content %}
+<div class="modal fade" id="staffEditModal" tabindex="-1" aria-labelledby="staffEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="staffEditModalLabel">{% if staff_member %}Edit Staff{% else %}Add Staff{% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="staffEditForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ staff_member['username'] if staff_member else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password{% if staff_member %} (leave blank to keep){% endif %}</label>
+                        <input type="password" class="form-control" id="password" name="password" {% if not staff_member %}required{% endif %}>
+                    </div>
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ staff_member['first_name'] if staff_member else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ staff_member['last_name'] if staff_member else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="admin" {% if staff_member and staff_member['role'] == 'admin' %}selected{% endif %}>Admin</option>
+                            <option value="cashier" {% if staff_member and staff_member['role'] == 'cashier' %}selected{% endif %}>Cashier</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact_number" class="form-label">Contact Number</label>
+                        <input type="tel" class="form-control" id="contact_number" name="contact_number" value="{{ staff_member['contact_number'] if staff_member else '' }}" inputmode="numeric" pattern="[0-9]+" required>
+                    </div>
+                    {% if staff_member %}
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="active" {% if staff_member['status'] == 'active' %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if staff_member['status'] == 'inactive' %}selected{% endif %}>Inactive</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="staffEditForm" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const staffModal = new bootstrap.Modal(document.getElementById('staffEditModal'));
+        staffModal.show();
+
+        document.getElementById('staffEditModal').addEventListener('hidden.bs.modal', function() {
+            window.location.href = '{{ url_for("staff.staff_list") }}';
+        });
+    });
+</script>
+{% endblock %}

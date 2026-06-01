@@ -14,7 +14,6 @@
     <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/bike_icon.png') }}">
     <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/person_icon.png') }}">
     <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/payments_icon.png') }}">
-    <link rel="preload" as="image" href="{{ url_for('static', filename='assets/imgs/maintainance_icon.png') }}">
 </head>
 
 <body>
@@ -50,10 +49,25 @@
                     <img src="{{ url_for('static', filename='assets/imgs/payments_icon.png') }}"    alt="Payments">
                     <span>Payments</span>
                 </a>
-                <a href="{{ url_for('maintenance.maintenance') }}" 
-                    class="nav-item" data-route="maintenance.maintenance">
-                    <img src="{{ url_for('static', filename='assets/imgs/maintainance_icon.png') }}" alt="Maintenance">
-                    <span>Maintenance</span>
+                {% if is_admin %}
+                <a href="{{ url_for('staff.staff_list') }}" 
+                    class="nav-item" data-route="staff.staff_list">
+                    <img src="{{ url_for('static', filename='assets/imgs/staff_icon.png') }}" alt="Staff">
+                    <span>Staff</span>
+                </a>
+                <a href="{{ url_for('activity.activity_log') }}" 
+                    class="nav-item" data-route="activity.activity_log">
+                    <img src="{{ url_for('static', filename='assets/imgs/log_icon.png') }}" alt="Activity Log">
+                    <span>Activity Log</span>
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="logout-section">
+                <a href="{{ url_for('logout') }}" 
+                    class="logout-btn" data-route="logout">
+                    <img src="{{ url_for('static', filename='assets/imgs/logout_icon.png') }}" alt="Logout">
+                    <span>Logout</span>
                 </a>
             </div>
         </div>
@@ -67,6 +81,7 @@
       document.addEventListener('DOMContentLoaded', function() { // sidebar state logic / highlighting thing
         const sidebar = document.querySelector('.sidebar');
         const navItems = document.querySelectorAll('.nav-item, .nav-item-top');
+        const logoutBtn = document.querySelector('.logout-btn');
         const navIndicator = document.querySelector('.nav-indicator');
 
         function setSidebarCookie(state) {
@@ -104,6 +119,13 @@
               
             });
         });
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function() {
+                sidebar.setAttribute('expand', 'true');
+                setSidebarCookie('expanded');
+            });
+        }
 
         sidebar.addEventListener('click', function(event) {
             if (event.target !== sidebar) { return; }
@@ -153,11 +175,10 @@
                 setSidebarCookie('collapsed');
             }
         }
-
         closethatbar();
     });
     </script>
 
     {% block extra_scripts %}{% endblock %}
 
-    <script src="static/modals.js"></script>
+    <script src="{{ url_for('static', filename='modals.js') }}"></script>

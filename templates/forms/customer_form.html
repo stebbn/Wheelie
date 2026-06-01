@@ -12,7 +12,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" id="customerForm">
+                <form method="post" id="customerForm" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="first_name" class="form-label">First Name</label>
                         <input type="text" class="form-control" id="first_name" name="first_name" value="{{ customer['first_name'] if customer else '' }}" required>
@@ -23,11 +23,24 @@
                     </div>
                     <div class="mb-3">
                         <label for="contact_number" class="form-label">Contact Number</label>
-                        <input type="tel" class="form-control" id="contact_number" name="contact_number" value="{{ customer['contact_number'] if customer else '' }}" required>
+                        <input type="tel" class="form-control" id="contact_number" name="contact_number" value="{{ customer['contact_number'] if customer else '' }}" inputmode="numeric" pattern="[0-9]+" required>
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email" value="{{ customer['email'] if customer else '' }}">
+                    </div>
+                    {% if customer and customer['staff_name'] %}
+                    <div class="mb-3">
+                        <label class="form-label">Registered By</label>
+                        <div>{{ customer['staff_name'] }} ({{ customer['staff_role'].title() }})</div>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="valid_id" class="form-label">Valid ID</label>
+                        {% if customer and customer['valid_id'] %}
+                        <div><a href="{{ url_for('static', filename=customer['valid_id']) }}" target="_blank">View current ID</a></div>
+                        {% endif %}
+                        <input type="file" class="form-control" id="valid_id" name="valid_id" accept="image/*,application/pdf">
                     </div>
                 </form>
             </div>

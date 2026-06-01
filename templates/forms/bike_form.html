@@ -26,17 +26,16 @@
                         <input type="text" class="form-control" id="model" name="model" value="{{ bike['model'] if bike else '' }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="size" class="form-label">Size</label>
-                        <select class="form-select" id="size" name="size" required>
-                            <option value="">Select Size...</option>
-                            <option value="small" {% if bike and bike['size'] == 'small' %}selected{% endif %}>Small</option>
-                            <option value="medium" {% if bike and bike['size'] == 'medium' %}selected{% endif %}>Medium</option>
-                            <option value="large" {% if bike and bike['size'] == 'large' %}selected{% endif %}>Large</option>
-                        </select>
+                        <label for="type" class="form-label">Type</label>
+                        <input type="text" class="form-control" id="type" name="type" value="{{ bike['type'] if bike else '' }}" required>
                     </div>
                     <div class="mb-3">
                         <label for="color" class="form-label">Color</label>
                         <input type="text" class="form-control" id="color" name="color" value="{{ bike['color'] if bike else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bike_rate" class="form-label">Hourly Rate (₱)</label>
+                        <input type="number" class="form-control" id="bike_rate" name="bike_rate" step="0.01" value="{{ bike['bike_rate'] if bike else '' }}" required>
                     </div>
                 </form>
             </div>

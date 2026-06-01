@@ -10,7 +10,7 @@
             <option value="all" {% if filter_status == 'all' %}selected{% endif %}>All Status</option>
             <option value="available" {% if filter_status == 'available' %}selected{% endif %}>Available</option>
             <option value="rented" {% if filter_status == 'rented' %}selected{% endif %}>Rented</option>
-            <option value="under_maintenance" {% if filter_status == 'under_maintenance' %}selected{% endif %}>Under Maintenance</option>
+            <option value="retired" {% if filter_status == 'retired' %}selected{% endif %}>Retired</option>
         </select>
         <button type="submit">Search</button>
         <button type="button" id="add-bike-btn" class="btn-primary">Add Bike</button>
@@ -18,14 +18,16 @@
 </div>
 <h1>Bike Fleet</h1>
 <div class="content-grid">
-    <table>
-        <thead>
-            <tr>
+    <div class="scroll-table-container">
+        <table>
+            <thead>
+                <tr>
                 <th>Code</th>
                 <th>Brand</th>
                 <th>Model</th>
-                <th>Size</th>
+                <th>Type</th>
                 <th>Color</th>
+                <th>Rate</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
@@ -36,14 +38,16 @@
                 <td>{{ bike['bike_code'] }}</td>
                 <td>{{ bike['brand'] }}</td>
                 <td>{{ bike['model'] }}</td>
-                <td>{{ bike['size'] }}</td>
+                <td>{{ bike['type'] }}</td>
                 <td>{{ bike['color'] }}</td>
+                <td>₱{{ bike['bike_rate'] }}</td>
                 <td><span class="status-badge status-{{ bike['status'] }}">{{ bike['status'].replace('_', ' ').title() }}</span></td>
                 <td><a href="{{ url_for('bikes.bike_detail', bid=bike['bike_id']) }}">View</a></td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <div class="modal fade" id="bikeFormModal" tabindex="-1" aria-labelledby="bikeFormModalLabel" aria-hidden="true">
@@ -68,17 +72,16 @@
                         <input type="text" class="form-control" id="model" name="model" required>
                     </div>
                     <div class="mb-3">
-                        <label for="size" class="form-label">Size</label>
-                        <select class="form-select" id="size" name="size" required>
-                            <option value="">Select Size...</option>
-                            <option value="small">Small</option>
-                            <option value="medium">Medium</option>
-                            <option value="large">Large</option>
-                        </select>
+                        <label for="type" class="form-label">Type</label>
+                        <input type="text" class="form-control" id="type" name="type" required>
                     </div>
                     <div class="mb-3">
                         <label for="color" class="form-label">Color</label>
                         <input type="text" class="form-control" id="color" name="color" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bike_rate" class="form-label">Hourly Rate (₱)</label>
+                        <input type="number" class="form-control" id="bike_rate" name="bike_rate" step="0.01" required>
                     </div>
                 </form>
             </div>

@@ -12,9 +12,10 @@
 </div>
 <h1>Customers</h1>
 <div class="content-grid">
-    <table>
-        <thead>
-            <tr>
+    <div class="scroll-table-container">
+        <table>
+            <thead>
+                <tr>
                 <th>Name</th>
                 <th>Contact</th>
                 <th>Email</th>
@@ -34,6 +35,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <div class="modal fade" id="customerFormModal" tabindex="-1" aria-labelledby="customerFormModalLabel" aria-hidden="true">
@@ -44,7 +46,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" id="customerForm" action="{{ url_for('customers.new_customer') }}">
+                <form method="post" id="customerForm" action="{{ url_for('customers.new_customer') }}" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="first_name" class="form-label">First Name</label>
                         <input type="text" class="form-control" id="first_name" name="first_name" required>
@@ -55,11 +57,15 @@
                     </div>
                     <div class="mb-3">
                         <label for="contact_number" class="form-label">Contact Number</label>
-                        <input type="tel" class="form-control" id="contact_number" name="contact_number" required>
+                        <input type="tel" class="form-control" id="contact_number" name="contact_number" inputmode="numeric" pattern="[0-9]+" required>
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="valid_id" class="form-label">Valid ID (optional)</label>
+                        <input type="file" class="form-control" id="valid_id" name="valid_id" accept="image/*,application/pdf">
                     </div>
                 </form>
             </div>

@@ -1,4 +1,6 @@
-import sqlite3, os
+import sqlite3
+import math
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import modules.appFileHandler as appFileHandler
@@ -13,6 +15,7 @@ class Database:
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.execute("PRAGMA journal_mode = WAL")
         self._create_tables()
+        self._migrate_schema()
         self._mockstaff()
 
     def _mockstaff(self):
@@ -27,101 +30,231 @@ class Database:
             self.conn.commit()
 
     def _create_tables(self):
-        
-        self.conn.executescript(""" 
+        self.conn.executescript("""
         CREATE TABLE IF NOT EXISTS staff (
             staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             first_name TEXT NOT NULL, last_name TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN('admin','cashier','mechanic')),
+            role TEXT NOT NULL CHECK(role IN('admin','cashier')),
             contact_number TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'active' CHECK(status IN('active','inactive')),
             created_at DATETIME NOT NULL DEFAULT(datetime('now','localtime'))
         );
-                                
+
         CREATE TABLE IF NOT EXISTS customer (
             customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
             first_name TEXT NOT NULL, last_name TEXT NOT NULL,
             contact_number TEXT NOT NULL,
             email TEXT UNIQUE,
+            staff_id INTEGER REFERENCES staff(staff_id) ON UPDATE CASCADE ON DELETE SET NULL,
+            valid_id TEXT,
             date_registered DATE NOT NULL DEFAULT(date('now','localtime'))
         );
+
         CREATE TABLE IF NOT EXISTS bike (
             bike_id INTEGER PRIMARY KEY AUTOINCREMENT,
             bike_code TEXT NOT NULL UNIQUE,
             brand TEXT NOT NULL, model TEXT NOT NULL,
-            size TEXT NOT NULL CHECK(size IN('small','medium','large')),
             color TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'available'
-                CHECK(status IN('available','rented','under_maintenance')),
+            bike_rate DECIMAL(8,2) NOT NULL DEFAULT 0,
+            type TEXT NOT NULL DEFAULT 'standard',
+            status TEXT NOT NULL DEFAULT 'available' CHECK(status IN('available','rented','retired')),
             date_added DATE NOT NULL DEFAULT(date('now','localtime'))
         );
-        CREATE TABLE IF NOT EXISTS rental (
+
+        CREATE TABLE IF NOT EXISTS rents (
             rental_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL REFERENCES customer(customer_id) ON UPDATE CASCADE ON DELETE RESTRICT,
-            bike_id INTEGER NOT NULL REFERENCES bike(bike_id) ON UPDATE CASCADE ON DELETE RESTRICT,
-            staff_id INTEGER NOT NULL REFERENCES staff(staff_id) ON UPDATE CASCADE ON DELETE RESTRICT,
+            customer_id INTEGER NOT NULL,
+            bike_id INTEGER NOT NULL,
+            staff_id INTEGER REFERENCES staff(staff_id) ON UPDATE CASCADE ON DELETE SET NULL,
             rental_start DATETIME NOT NULL DEFAULT(datetime('now','localtime')),
-            rental_end DATETIME,
-            rental_rate DECIMAL(8,2) NOT NULL,
-            total_amount DECIMAL(8,2),
-            notes TEXT,
-            status TEXT NOT NULL DEFAULT 'active' CHECK(status IN('active','returned','overdue'))
+            FOREIGN KEY(customer_id) REFERENCES customer(customer_id) ON DELETE CASCADE,
+            FOREIGN KEY(bike_id) REFERENCES bike(bike_id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS returns (
+            return_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            bike_id INTEGER NOT NULL,
+            rental_end DATETIME NOT NULL DEFAULT(datetime('now','localtime')),
+            total_amount DECIMAL(10,2) NOT NULL,
+            FOREIGN KEY(customer_id) REFERENCES customer(customer_id) ON DELETE CASCADE,
+            FOREIGN KEY(bike_id) REFERENCES bike(bike_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS payment (
             payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            rental_id INTEGER NOT NULL UNIQUE REFERENCES rental(rental_id) ON UPDATE CASCADE ON DELETE RESTRICT,
+            customer_id INTEGER NOT NULL,
+            bike_id INTEGER NOT NULL,
+            rental_id INTEGER,
             payment_date DATETIME NOT NULL DEFAULT(datetime('now','localtime')),
-            amount_paid DECIMAL(8,2) NOT NULL,
-            payment_method TEXT NOT NULL CHECK(payment_method IN('cash','gcash','card')),
-            payment_status TEXT NOT NULL DEFAULT 'paid' CHECK(payment_status IN('paid','pending','refunded'))
+            amount_paid DECIMAL(10,2) NOT NULL,
+            payment_method TEXT,
+            payment_status TEXT DEFAULT 'paid',
+            FOREIGN KEY(customer_id) REFERENCES customer(customer_id) ON DELETE CASCADE,
+            FOREIGN KEY(bike_id) REFERENCES bike(bike_id) ON DELETE CASCADE
         );
-        CREATE TABLE IF NOT EXISTS maintenance (
-            maintenance_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            bike_id INTEGER NOT NULL REFERENCES bike(bike_id) ON UPDATE CASCADE ON DELETE RESTRICT,
-            staff_id INTEGER NOT NULL REFERENCES staff(staff_id) ON UPDATE CASCADE ON DELETE RESTRICT,
-            maintenance_date DATE NOT NULL DEFAULT(date('now','localtime')),
-            maintenance_type TEXT NOT NULL CHECK(maintenance_type IN('routine','repair','inspection')),
-            description TEXT NOT NULL,
-            outcome TEXT NOT NULL CHECK(outcome IN('resolved','parts_needed','retired'))
-        );
+
         CREATE TABLE IF NOT EXISTS activity_log (
             log_id INTEGER PRIMARY KEY AUTOINCREMENT,
             staff_id INTEGER NOT NULL REFERENCES staff(staff_id) ON UPDATE CASCADE ON DELETE RESTRICT,
             timestamp DATETIME NOT NULL DEFAULT(datetime('now','localtime')),
             action TEXT NOT NULL, target_table TEXT, target_id INTEGER
         );
-        CREATE INDEX IF NOT EXISTS idx_rental_customer ON rental(customer_id);
-        CREATE INDEX IF NOT EXISTS idx_rental_bike ON rental(bike_id);
-        CREATE INDEX IF NOT EXISTS idx_rental_status ON rental(status);
-        CREATE INDEX IF NOT EXISTS idx_payment_rental ON payment(rental_id);
-        CREATE INDEX IF NOT EXISTS idx_maint_bike ON maintenance(bike_id);
+
+        CREATE INDEX IF NOT EXISTS idx_rents_customer ON rents(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_rents_bike ON rents(bike_id);
+        CREATE INDEX IF NOT EXISTS idx_rents_staff ON rents(staff_id);
         CREATE INDEX IF NOT EXISTS idx_log_staff ON activity_log(staff_id);
 
-        CREATE TRIGGER IF NOT EXISTS trg_rental_created AFTER INSERT ON rental
+        CREATE TRIGGER IF NOT EXISTS trg_rents_created AFTER INSERT ON rents
         BEGIN UPDATE bike SET status='rented' WHERE bike_id=NEW.bike_id; END;
 
-        CREATE TRIGGER IF NOT EXISTS trg_rental_returned AFTER UPDATE OF status ON rental
-        WHEN NEW.status='returned'
+        CREATE TRIGGER IF NOT EXISTS trg_returns_created AFTER INSERT ON returns
         BEGIN UPDATE bike SET status='available' WHERE bike_id=NEW.bike_id; END;
 
-        CREATE TRIGGER IF NOT EXISTS trg_maint_started AFTER INSERT ON maintenance
-        BEGIN UPDATE bike SET status='under_maintenance' WHERE bike_id=NEW.bike_id; END;
-
-        CREATE TRIGGER IF NOT EXISTS trg_maint_resolved AFTER UPDATE OF outcome ON maintenance
-        WHEN NEW.outcome='resolved'
-        BEGIN UPDATE bike SET status='available' WHERE bike_id=NEW.bike_id; END;
         """)
         self.conn.commit()
 
+    def _column_exists(self, table, column):
+        rows = self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+        return any(row[1] == column or (isinstance(row, dict) and row.get('name') == column) for row in rows)
+
+    def _bike_status_allows_retired(self):
+        row = self.conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='bike'"
+        ).fetchone()
+        if not row:
+            return False
+        sql = row[0] if isinstance(row, (list, tuple)) else row.get('sql') if isinstance(row, dict) else row
+        if not sql:
+            return False
+        return 'retired' in sql.lower()
+
+    def _migrate_bike_status(self):
+        self.conn.execute("PRAGMA foreign_keys = OFF")
+        self.conn.executescript(
+            """
+            CREATE TABLE bike_new (
+                bike_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bike_code TEXT NOT NULL UNIQUE,
+                brand TEXT NOT NULL,
+                model TEXT NOT NULL,
+                color TEXT NOT NULL,
+                bike_rate DECIMAL(8,2) NOT NULL DEFAULT 0,
+                type TEXT NOT NULL DEFAULT 'standard',
+                status TEXT NOT NULL DEFAULT 'available' CHECK(status IN('available','rented','retired')),
+                date_added DATE NOT NULL DEFAULT(date('now','localtime'))
+            );
+            INSERT INTO bike_new (
+                bike_id, bike_code, brand, model, color, bike_rate, type, status, date_added
+            )
+            SELECT
+                bike_id,
+                bike_code,
+                brand,
+                model,
+                color,
+                COALESCE(bike_rate, 0),
+                COALESCE(type, 'standard'),
+                status,
+                date_added
+            FROM bike;
+            DROP TABLE bike;
+            ALTER TABLE bike_new RENAME TO bike;
+            """
+        )
+        self.conn.execute("PRAGMA foreign_keys = ON")
+        self.conn.commit()
+        self._create_tables()
+
+    def _remove_bike_size_column(self):
+        """Remove size column from bike table by recreating it without the size field."""
+        self.conn.execute("PRAGMA foreign_keys = OFF")
+        self.conn.executescript(
+            """
+            CREATE TABLE bike_new (
+                bike_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bike_code TEXT NOT NULL UNIQUE,
+                brand TEXT NOT NULL,
+                model TEXT NOT NULL,
+                color TEXT NOT NULL,
+                bike_rate DECIMAL(8,2) NOT NULL DEFAULT 0,
+                type TEXT NOT NULL DEFAULT 'standard',
+                status TEXT NOT NULL DEFAULT 'available' CHECK(status IN('available','rented','retired')),
+                date_added DATE NOT NULL DEFAULT(date('now','localtime'))
+            );
+            INSERT INTO bike_new (
+                bike_id, bike_code, brand, model, color, bike_rate, type, status, date_added
+            )
+            SELECT
+                bike_id,
+                bike_code,
+                brand,
+                model,
+                color,
+                COALESCE(bike_rate, 0),
+                COALESCE(type, 'standard'),
+                status,
+                date_added
+            FROM bike;
+            DROP TABLE bike;
+            ALTER TABLE bike_new RENAME TO bike;
+            """
+        )
+        self.conn.execute("PRAGMA foreign_keys = ON")
+        self.conn.commit()
+
+    def _migrate_schema(self):
+        if not self._column_exists("customer", "staff_id"):
+            self.conn.execute(
+                "ALTER TABLE customer ADD COLUMN staff_id INTEGER REFERENCES staff(staff_id) ON UPDATE CASCADE ON DELETE SET NULL"
+            )
+        if not self._column_exists("customer", "valid_id"):
+            self.conn.execute("ALTER TABLE customer ADD COLUMN valid_id TEXT")
+        if not self._column_exists("bike", "bike_rate"):
+            self.conn.execute("ALTER TABLE bike ADD COLUMN bike_rate DECIMAL(8,2) NOT NULL DEFAULT 0")
+        if not self._column_exists("bike", "type"):
+            self.conn.execute("ALTER TABLE bike ADD COLUMN type TEXT NOT NULL DEFAULT 'standard'")
+        # Only attempt bike-status migration if the `bike` table already exists.
+        row = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bike'").fetchone()
+        if row:
+            try:
+                if not self._bike_status_allows_retired():
+                    self._migrate_bike_status()
+            except Exception:
+                # Non-fatal: if bike status migration fails (existing triggers or schema quirks), continue
+                pass
+        
+        # Remove size column from bike table if it exists
+        if self._column_exists("bike", "size"):
+            self._remove_bike_size_column()
+        
+        # Migrate mechanic staff to cashier role
+        self.conn.execute("UPDATE staff SET role='cashier' WHERE role='mechanic'")
+
+        # Only run bike updates if bike table exists (defensive for fresh DBs)
+        bike_row = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bike'").fetchone()
+        if bike_row:
+            self.conn.execute("UPDATE bike SET bike_rate=COALESCE(bike_rate, 0)")
+            self.conn.execute("UPDATE bike SET type=COALESCE(type, 'standard')")
+            self.conn.execute("UPDATE bike SET status='available' WHERE status='under_maintenance'")
+        # Ensure rents has staff_id column for recording which staff processed the rental
+        row = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rents'").fetchone()
+        if row and not self._column_exists('rents', 'staff_id'):
+            self.conn.execute("ALTER TABLE rents ADD COLUMN staff_id INTEGER")
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_rents_staff ON rents(staff_id)")
+        self.conn.commit()
+
+    
     # Auth
     def get_staff_by_username(self, username):
         r = self.conn.execute("SELECT * FROM staff WHERE username=? AND status='active'", (username,)).fetchone()
         return dict(r) if r else None
     
     def verify_user(self, username, password):
-        user = self.conn.execute('SELECT * FROM staff WHERE username = ?', (username,)).fetchone()
+        user = self.conn.execute("SELECT * FROM staff WHERE username = ? AND status='active'", (username,)).fetchone()
 
         if user and check_password_hash(user['password_hash'], password):
             return True
@@ -131,6 +264,10 @@ class Database:
     # Staff
     def get_all_staff(self):
         return [dict(r) for r in self.conn.execute("SELECT * FROM staff ORDER BY last_name,first_name").fetchall()]
+
+    def get_staff(self, sid):
+        r = self.conn.execute("SELECT * FROM staff WHERE staff_id=?", (sid,)).fetchone()
+        return dict(r) if r else None
 
     def create_staff(self, d):
         self.conn.execute("INSERT INTO staff(username,password_hash,first_name,last_name,role,contact_number,status) VALUES(:username,:password_hash,:first_name,:last_name,:role,:contact_number,'active')", d)
@@ -156,25 +293,64 @@ class Database:
         return [dict(r) for r in self.conn.execute("SELECT * FROM customer WHERE first_name LIKE ? OR last_name LIKE ? OR contact_number LIKE ? OR email LIKE ? ORDER BY last_name,first_name", (q,q,q,q)).fetchall()]
 
     def get_customer(self, cid):
-        r = self.conn.execute("SELECT * FROM customer WHERE customer_id=?", (cid,)).fetchone()
+        r = self.conn.execute(
+            "SELECT c.*,s.first_name||' '||s.last_name AS staff_name,s.role AS staff_role "
+            "FROM customer c LEFT JOIN staff s ON c.staff_id=s.staff_id WHERE c.customer_id=?",
+            (cid,),
+        ).fetchone()
         return dict(r) if r else None
 
     def create_customer(self, d):
-        self.conn.execute("INSERT INTO customer(first_name,last_name,contact_number,email) VALUES(:first_name,:last_name,:contact_number,:email)", d)
+        self.conn.execute(
+            "INSERT INTO customer(first_name,last_name,contact_number,email,staff_id,valid_id) "
+            "VALUES(:first_name,:last_name,:contact_number,:email,:staff_id,:valid_id)",
+            d,
+        )
         self.conn.commit()
         return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def update_customer(self, cid, d):
         d["customer_id"] = cid
-        self.conn.execute("UPDATE customer SET first_name=:first_name,last_name=:last_name,contact_number=:contact_number,email=:email WHERE customer_id=:customer_id", d)
+        self.conn.execute(
+            "UPDATE customer SET first_name=:first_name,last_name=:last_name,contact_number=:contact_number,"
+            "email=:email,valid_id=:valid_id WHERE customer_id=:customer_id",
+            d,
+        )
         self.conn.commit()
 
     def get_customer_rentals(self, cid):
-        return [dict(r) for r in self.conn.execute("SELECT r.*,b.bike_code,b.brand,b.model FROM rental r JOIN bike b ON r.bike_id=b.bike_id WHERE r.customer_id=? ORDER BY r.rental_start DESC LIMIT 10", (cid,)).fetchall()]
+        rows = self.conn.execute(
+            "SELECT rents.rental_id, rents.customer_id, rents.bike_id, rents.staff_id, s.first_name||' '||s.last_name AS staff_name, rents.rental_start, "
+            "b.bike_code, b.brand, b.model, b.bike_rate AS rental_rate, "
+            "(SELECT rental_end FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS rental_end, "
+            "(SELECT total_amount FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS total_amount "
+            "FROM rents LEFT JOIN staff s ON rents.staff_id=s.staff_id JOIN bike b ON rents.bike_id=b.bike_id WHERE rents.customer_id=? ORDER BY rents.rental_start DESC LIMIT 10",
+            (cid,)
+        ).fetchall()
+
+        result = []
+        for r in rows:
+            rr = dict(r)
+            if rr['rental_end'] is not None:
+                rr['status'] = 'returned'
+            elif rr['rental_start'] <= (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'):
+                rr['status'] = 'overdue'
+            else:
+                rr['status'] = 'active'
+            result.append(rr)
+        return result
 
     def get_customer_stats(self, cid):
-        r = self.conn.execute("SELECT COUNT(*) as total_rentals, COALESCE(SUM(total_amount),0) as total_spent FROM rental WHERE customer_id=? AND status='returned'", (cid,)).fetchone()
-        return dict(r)
+        # Count returned rents and sum amounts from returns mapped to rents by customer and bike
+        total_rentals = self.conn.execute(
+            "SELECT COUNT(*) FROM rents WHERE EXISTS (SELECT 1 FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start) AND rents.customer_id=?",
+            (cid,)
+        ).fetchone()[0]
+        total_spent = self.conn.execute(
+            "SELECT COALESCE(SUM((SELECT total_amount FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start ORDER BY returns.rental_end LIMIT 1)),0) FROM rents WHERE rents.customer_id=?",
+            (cid,)
+        ).fetchone()[0]
+        return {'total_rentals': total_rentals, 'total_spent': total_spent}
 
     # Bikes
     def get_all_bikes(self, search="", status="all"):
@@ -191,78 +367,177 @@ class Database:
         return [dict(r) for r in self.conn.execute("SELECT * FROM bike WHERE status='available' ORDER BY bike_code").fetchall()]
 
     def create_bike(self, d):
-        self.conn.execute("INSERT INTO bike(bike_code,brand,model,size,color,status) VALUES(:bike_code,:brand,:model,:size,:color,'available')", d)
+        self.conn.execute(
+            "INSERT INTO bike(bike_code,brand,model,color,bike_rate,type,status) "
+            "VALUES(:bike_code,:brand,:model,:color,:bike_rate,:type,'available')",
+            d,
+        )
         self.conn.commit()
         return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def update_bike(self, bid, d):
         d["bike_id"] = bid
-        self.conn.execute("UPDATE bike SET bike_code=:bike_code,brand=:brand,model=:model,size=:size,color=:color WHERE bike_id=:bike_id", d)
+        self.conn.execute(
+            "UPDATE bike SET bike_code=:bike_code,brand=:brand,model=:model,color=:color,"
+            "bike_rate=:bike_rate,type=:type WHERE bike_id=:bike_id",
+            d,
+        )
         self.conn.commit()
 
     def get_bike_stats(self):
-        r = self.conn.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available, SUM(CASE WHEN status='rented' THEN 1 ELSE 0 END) as rented, SUM(CASE WHEN status='under_maintenance' THEN 1 ELSE 0 END) as maintenance FROM bike").fetchone()
+        r = self.conn.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available, SUM(CASE WHEN status='rented' THEN 1 ELSE 0 END) as rented FROM bike").fetchone()
         return dict(r)
 
     # Rentals
+    def _update_overdue_rentals(self):
+        # No-op: overdue is computed dynamically for `rents` during queries
+        return
+
     def get_all_rentals(self, status="all"):
-        base = "SELECT r.*,c.first_name||' '||c.last_name AS customer_name,b.bike_code,b.brand,b.model,s.first_name||' '||s.last_name AS staff_name FROM rental r JOIN customer c ON r.customer_id=c.customer_id JOIN bike b ON r.bike_id=b.bike_id JOIN staff s ON r.staff_id=s.staff_id"
-        if status != "all":
-            rows = self.conn.execute(base+" WHERE r.status=? ORDER BY r.rental_start DESC", (status,)).fetchall()
-        else:
-            rows = self.conn.execute(base+" ORDER BY r.rental_start DESC").fetchall()
-        return [dict(r) for r in rows]
+        # Fetch rents and compute return info via subqueries; status is computed in Python
+        rows = self.conn.execute(
+            "SELECT rents.rental_id, rents.customer_id, c.first_name||' '||c.last_name AS customer_name, "
+            "rents.staff_id, s.first_name||' '||s.last_name AS staff_name, "
+            "b.bike_code, b.brand, b.model, b.bike_rate as rental_rate, rents.rental_start, "
+            "(SELECT rental_end FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS rental_end, "
+            "(SELECT total_amount FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS total_amount "
+            "FROM rents JOIN customer c ON rents.customer_id=c.customer_id LEFT JOIN staff s ON rents.staff_id=s.staff_id JOIN bike b ON rents.bike_id=b.bike_id "
+            "ORDER BY rents.rental_start DESC"
+        ).fetchall()
+
+        result = []
+        for r in rows:
+            rr = dict(r)
+            if rr['rental_end'] is not None:
+                rr['status'] = 'returned'
+            elif rr['rental_start'] <= (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'):
+                rr['status'] = 'overdue'
+            else:
+                rr['status'] = 'active'
+            result.append(rr)
+
+        if status != 'all':
+            result = [r for r in result if r['status'] == status]
+        return result
 
     def get_rental(self, rid):
-        r = self.conn.execute("SELECT r.*,c.first_name||' '||c.last_name AS customer_name,b.bike_code,b.brand,b.model,b.size,s.first_name||' '||s.last_name AS staff_name FROM rental r JOIN customer c ON r.customer_id=c.customer_id JOIN bike b ON r.bike_id=b.bike_id JOIN staff s ON r.staff_id=s.staff_id WHERE r.rental_id=?", (rid,)).fetchone()
-        return dict(r) if r else None
+        r = self.conn.execute(
+            "SELECT rents.rental_id, rents.customer_id, c.first_name||' '||c.last_name AS customer_name, rents.staff_id, s.first_name||' '||s.last_name AS staff_name, b.bike_code, b.brand, b.model, b.bike_rate AS rental_rate, rents.rental_start, "
+            "(SELECT rental_end FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS rental_end, "
+            "(SELECT total_amount FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS total_amount "
+            "FROM rents JOIN customer c ON rents.customer_id=c.customer_id LEFT JOIN staff s ON rents.staff_id=s.staff_id JOIN bike b ON rents.bike_id=b.bike_id WHERE rents.rental_id=?",
+            (rid,)
+        ).fetchone()
+        if not r:
+            return None
+        rr = dict(r)
+        if rr['rental_end'] is not None:
+            rr['status'] = 'returned'
+        elif rr['rental_start'] <= (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'):
+            rr['status'] = 'overdue'
+        else:
+            rr['status'] = 'active'
+        return rr
 
     def create_rental(self, d):
-        self.conn.execute("INSERT INTO rental(customer_id,bike_id,staff_id,rental_start,rental_rate,notes,status) VALUES(:customer_id,:bike_id,:staff_id,:rental_start,:rental_rate,:notes,'active')", d)
+        if not d.get('rental_start'):
+            d['rental_start'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Insert into rents; store the staff who processed the rental if provided
+        self.conn.execute(
+            "INSERT INTO rents(customer_id,bike_id,rental_start,staff_id) VALUES(?,?,?,?)",
+            (d.get('customer_id'), d.get('bike_id'), d.get('rental_start'), d.get('staff_id'))
+        )
         self.conn.commit()
-        return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        return self.conn.execute('SELECT last_insert_rowid()').fetchone()[0]
 
-    def return_rental(self, rid, rental_end, total_amount):
-        self.conn.execute("UPDATE rental SET rental_end=?,total_amount=?,status='returned' WHERE rental_id=?", (rental_end, total_amount, rid))
+    def return_rental(self, rid):
+        # Retrieve rent info from rents and compute total using bike_rate
+        r = self.conn.execute("SELECT rental_start, bike_id, customer_id FROM rents WHERE rental_id=?", (rid,)).fetchone()
+        if not r:
+            return None
+        rental_start = datetime.fromisoformat(r['rental_start'])
+        rental_end = datetime.now()
+        duration_days = max(1, math.ceil((rental_end - rental_start).total_seconds() / 86400))
+        bike = self.conn.execute("SELECT bike_rate FROM bike WHERE bike_id=?", (r['bike_id'],)).fetchone()
+        rate = float(bike['bike_rate']) if bike else 0
+        total_amount = round(duration_days * rate, 2)
+
+        # Insert a return record
+        self.conn.execute(
+            "INSERT INTO returns(customer_id,bike_id,rental_end,total_amount) VALUES(?,?,?,?)",
+            (r['customer_id'], r['bike_id'], rental_end.strftime('%Y-%m-%d %H:%M:%S'), total_amount),
+        )
         self.conn.commit()
+        return {
+            'rental_end': rental_end.strftime('%Y-%m-%d %H:%M:%S'),
+            'total_amount': total_amount,
+            'duration_days': duration_days,
+        }
 
     def get_active_rentals(self):
-        return [dict(r) for r in self.conn.execute("SELECT r.*,c.first_name||' '||c.last_name AS customer_name,b.bike_code,b.brand,b.model FROM rental r JOIN customer c ON r.customer_id=c.customer_id JOIN bike b ON r.bike_id=b.bike_id WHERE r.status IN('active','overdue') ORDER BY r.rental_start").fetchall()]
+        rows = self.get_all_rentals()
+        return [r for r in rows if r['status'] in ('active','overdue')]
 
     def get_dashboard_stats(self):
-        r = self.conn.execute("SELECT (SELECT COUNT(*) FROM rental WHERE status='active') as active_rentals,(SELECT COUNT(*) FROM rental WHERE status='overdue') as overdue,(SELECT COUNT(*) FROM bike WHERE status='available') as bikes_available,(SELECT COALESCE(SUM(p.amount_paid),0) FROM payment p WHERE date(p.payment_date)=date('now','localtime')) as revenue_today").fetchone()
-        return dict(r)
+        # Compute active and overdue from rents/returns
+        active = self.conn.execute(
+            "SELECT COUNT(*) FROM rents WHERE NOT EXISTS (SELECT 1 FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start)"
+        ).fetchone()[0]
+        overdue = self.conn.execute(
+            "SELECT COUNT(*) FROM rents WHERE NOT EXISTS (SELECT 1 FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start) AND rental_start <= datetime('now','localtime','-1 day')"
+        ).fetchone()[0]
+        bikes_available = self.conn.execute("SELECT COUNT(*) FROM bike WHERE status='available'").fetchone()[0]
+        revenue_today = self.conn.execute("SELECT COALESCE(SUM(amount_paid),0) FROM payment WHERE date(payment_date)=date('now','localtime')").fetchone()[0]
+        return {
+            'active_rentals': active,
+            'overdue': overdue,
+            'bikes_available': bikes_available,
+            'revenue_today': revenue_today,
+        }
 
     # Payments
     def get_all_payments(self):
-        return [dict(r) for r in self.conn.execute("SELECT p.*,c.first_name||' '||c.last_name AS customer_name,b.bike_code FROM payment p JOIN rental r ON p.rental_id=r.rental_id JOIN customer c ON r.customer_id=c.customer_id JOIN bike b ON r.bike_id=b.bike_id ORDER BY p.payment_date DESC").fetchall()]
+        return [dict(r) for r in self.conn.execute(
+            "SELECT p.*, c.first_name||' '||c.last_name AS customer_name, b.bike_code "
+            "FROM payment p JOIN customer c ON p.customer_id=c.customer_id JOIN bike b ON p.bike_id=b.bike_id "
+            "ORDER BY p.payment_date DESC"
+        ).fetchall()]
 
     def create_payment(self, d):
-        self.conn.execute("INSERT INTO payment(rental_id,amount_paid,payment_method,payment_status) VALUES(:rental_id,:amount_paid,:payment_method,'paid')", d)
+        # Accept either rental_id OR customer_id and bike_id
+        rental_id = d.get('rental_id') or d.get('rental')
+        cust_id = d.get('customer_id')
+        bike_id = d.get('bike_id')
+        if rental_id and (not cust_id or not bike_id):
+            r = self.conn.execute("SELECT customer_id,bike_id FROM rents WHERE rental_id=?", (rental_id,)).fetchone()
+            if r:
+                cust_id = r['customer_id']
+                bike_id = r['bike_id']
+
+        if not cust_id or not bike_id:
+            raise ValueError('customer_id and bike_id required')
+
+        self.conn.execute(
+            "INSERT INTO payment(customer_id,bike_id,rental_id,amount_paid,payment_method,payment_status) VALUES(?,?,?,?,?,?)",
+            (cust_id, bike_id, rental_id, d.get('amount_paid'), d.get('payment_method'), d.get('payment_status') or 'paid')
+        )
         self.conn.commit()
+        return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def get_payment_for_rental(self, rid):
         r = self.conn.execute("SELECT * FROM payment WHERE rental_id=?", (rid,)).fetchone()
         return dict(r) if r else None
 
-    # Maintenance
-    def get_all_maintenance(self):
-        return [dict(r) for r in self.conn.execute("SELECT m.*,b.bike_code,b.brand,b.model,s.first_name||' '||s.last_name AS staff_name FROM maintenance m JOIN bike b ON m.bike_id=b.bike_id JOIN staff s ON m.staff_id=s.staff_id ORDER BY m.maintenance_date DESC").fetchall()]
-
-    def create_maintenance(self, d):
-        self.conn.execute("INSERT INTO maintenance(bike_id,staff_id,maintenance_date,maintenance_type,description,outcome) VALUES(:bike_id,:staff_id,:maintenance_date,:maintenance_type,:description,:outcome)", d)
-        self.conn.commit()
-        return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-    def update_maintenance(self, mid, d):
-        d["maintenance_id"] = mid
-        self.conn.execute("UPDATE maintenance SET maintenance_type=:maintenance_type,description=:description,outcome=:outcome WHERE maintenance_id=:maintenance_id", d)
-        self.conn.commit()
-
-    def get_bikes_for_maintenance(self):
-        return [dict(r) for r in self.conn.execute("SELECT * FROM bike WHERE status != 'rented' ORDER BY bike_code").fetchall()]
-
     # Activity Log
+    def get_activity_log(self, limit=200):
+        rows = self.conn.execute(
+            "SELECT l.*,s.first_name||' '||s.last_name AS staff_name,s.role AS staff_role "
+            "FROM activity_log l JOIN staff s ON l.staff_id=s.staff_id "
+            "ORDER BY l.timestamp DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def log_action(self, staff_id, action, target_table=None, target_id=None):
         self.conn.execute("INSERT INTO activity_log(staff_id,action,target_table,target_id) VALUES(?,?,?,?)", (staff_id, action, target_table, target_id))
         self.conn.commit()

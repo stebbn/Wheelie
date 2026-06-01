@@ -14,9 +14,10 @@
 </div>
 <h1>Rentals</h1>
 <div class="content-grid">
-    <table>
-        <thead>
-            <tr>
+    <div class="scroll-table-container">
+        <table>
+            <thead>
+                <tr>
                 <th>Customer</th>
                 <th>Bike</th>
                 <th>Start Date</th>
@@ -40,6 +41,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- New Rental Modal -->
@@ -66,17 +68,13 @@
                         <select name="bike_id" id="bike_id" class="form-select" required>
                             <option value="">Select a bike...</option>
                             {% for bike in bikes %}
-                            <option value="{{ bike['bike_id'] }}">{{ bike['bike_code'] }} - {{ bike['brand'] }} {{ bike['model'] }}</option>
+                            <option value="{{ bike['bike_id'] }}" data-rate="{{ bike['bike_rate'] }}">{{ bike['bike_code'] }} - {{ bike['brand'] }} {{ bike['model'] }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="rental_start" class="form-label">Rental Start</label>
-                        <input type="datetime-local" name="rental_start" id="rental_start" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="rental_rate" class="form-label">Daily Rate (₱)</label>
-                        <input type="number" name="rental_rate" id="rental_rate" step="0.01" class="form-control" required>
+                        <label for="rental_rate_display" class="form-label">Hourly Rate (₱)</label>
+                        <input type="text" name="rental_rate_display" id="rental_rate_display" class="form-control" readonly>
                     </div>
                     <div class="mb-3">
                         <label for="notes" class="form-label">Notes</label>
@@ -105,6 +103,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     modalElement.addEventListener('hidden.bs.modal', function () {
         rentalForm.reset();
+    });
+
+    const rateField = document.getElementById('rental_rate_display');
+
+    document.getElementById('bike_id').addEventListener('change', function() {
+        const selected = this.options[this.selectedIndex];
+        rateField.value = selected ? selected.dataset.rate || '' : '';
     });
 
     rentalForm.addEventListener('submit', function(event) {

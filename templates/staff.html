@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - Staff{% endblock %}
+
+{% block content %}
+<div class="top-bar">
+    <form method="get" class="search-form">
+        <button type="button" id="add-staff-btn" class="btn-primary">Add Staff</button>
+    </form>
+</div>
+<h1>Staff Management</h1>
+<div class="content-grid">
+    <div class="scroll-table-container">
+        <table>
+            <thead>
+                <tr>
+                <th>Username</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in staff_members %}
+            <tr>
+                <td>{{ member['username'] }}</td>
+                <td>{{ member['first_name'] }} {{ member['last_name'] }}</td>
+                <td>{{ member['role'].title() }}</td>
+                <td>{{ member['contact_number'] }}</td>
+                <td><span class="status-badge status-{{ member['status'] }}">{{ member['status'].title() }}</span></td>
+                <td>
+                    <a href="{{ url_for('staff.edit_staff', sid=member['staff_id']) }}">Edit</a>
+                    {% if member['staff_id'] != current_staff_id %}
+                    <form method="post" action="{{ url_for('staff.toggle_staff', sid=member['staff_id']) }}" style="display:inline;">
+                        <button type="submit" class="btn-secondary">
+                            {% if member['status'] == 'active' %}Disable{% else %}Enable{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="modal fade" id="staffFormModal" tabindex="-1" aria-labelledby="staffFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="staffFormModalLabel">Add Staff</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="staffForm" action="{{ url_for('staff.new_staff') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="admin">Admin</option>
+                            <option value="cashier">Cashier</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact_number" class="form-label">Contact Number</label>
+                        <input type="tel" class="form-control" id="contact_number" name="contact_number" inputmode="numeric" pattern="[0-9]+" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="staffForm" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('add-staff-btn');
+        const modal = new bootstrap.Modal(document.getElementById('staffFormModal'));
+        btn.addEventListener('click', () => modal.show());
+    });
+</script>
+{% endblock %}

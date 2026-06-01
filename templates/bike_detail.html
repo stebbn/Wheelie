@@ -22,12 +22,16 @@
                 <span class="value">{{ bike['model'] }}</span>
             </div>
             <div class="detail-item">
-                <span class="label">Size:</span>
-                <span class="value">{{ bike['size'].title() }}</span>
+                <span class="label">Type:</span>
+                <span class="value">{{ bike['type'] }}</span>
             </div>
             <div class="detail-item">
                 <span class="label">Color:</span>
                 <span class="value">{{ bike['color'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Hourly Rate:</span>
+                <span class="value">₱{{ bike['bike_rate'] }}</span>
             </div>
             <div class="detail-item">
                 <span class="label">Status:</span>
@@ -39,9 +43,8 @@
             </div>
         </div>
         <div class="actions">
-            <a href="{{ url_for('bikes.edit_bike', bid=bike['bike_id']) }}" class="btn-primary">Edit</a>
             {% if bike['status'] != 'rented' %}
-            <a href="{{ url_for('maintenance.new_maintenance') }}?bike_id={{ bike['bike_id'] }}" class="btn-secondary">Schedule Maintenance</a>
+            <a href="{{ url_for('bikes.edit_bike', bid=bike['bike_id']) }}" class="btn-primary">Edit</a>
             {% endif %}
             <a href="{{ url_for('bikes.registry') }}" class="btn-secondary">Back</a>
         </div>

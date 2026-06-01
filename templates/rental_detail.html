@@ -14,11 +14,7 @@
             </div>
             <div class="detail-item">
                 <span class="label">Bike:</span>
-                <span class="value">{{ rental['bike_code'] }} - {{ rental['brand'] }} {{ rental['model'] }} ({{ rental['size'] }})</span>
-            </div>
-            <div class="detail-item">
-                <span class="label">Staff:</span>
-                <span class="value">{{ rental['staff_name'] }}</span>
+                <span class="value">{{ rental['bike_code'] }} - {{ rental['brand'] }} {{ rental['model'] }}</span>
             </div>
             <div class="detail-item">
                 <span class="label">Status:</span>
@@ -33,31 +29,23 @@
                 <span class="value">{{ rental['rental_end'] or 'Not Returned' }}</span>
             </div>
             <div class="detail-item">
-                <span class="label">Daily Rate:</span>
+                <span class="label">Hourly Rate:</span>
                 <span class="value">₱{{ rental['rental_rate'] }}</span>
             </div>
             <div class="detail-item">
                 <span class="label">Total Amount:</span>
                 <span class="value">₱{{ rental['total_amount'] or 'Pending' }}</span>
             </div>
-            <div class="detail-item">
-                <span class="label">Notes:</span>
-                <span class="value">{{ rental['notes'] or '-' }}</span>
-            </div>
         </div>
     </div>
 
-    {% if rental['status'] == 'active' %}
+    {% if rental['status'] in ['active', 'overdue'] %}
     <div class="detail-section">
         <h2>Return Bike</h2>
         <form method="post" class="form">
             <div class="form-group">
-                <label>Return Date</label>
-                <input type="datetime-local" name="rental_end" required>
-            </div>
-            <div class="form-group">
-                <label>Total Amount (₱)</label>
-                <input type="number" name="total_amount" step="0.01" required>
+                <label>Total Amount</label>
+                <div>Calculated automatically based on rental duration.</div>
             </div>
             <div class="form-group">
                 <label>Payment Method</label>

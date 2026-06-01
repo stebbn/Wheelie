@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Wheelie - Activity Log{% endblock %}
+
+{% block content %}
+<h1>Activity Log</h1>
+<div class="content-grid">
+    <div class="scroll-table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Staff</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                    <th>Target</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log['timestamp'] }}</td>
+                <td>{{ log['staff_name'] }}</td>
+                <td>{{ log['staff_role'].title() }}</td>
+                <td>{{ log['action'].replace('_', ' ').title() }}</td>
+                <td>{{ log['target_table'] }}{% if log['target_id'] %} #{{ log['target_id'] }}{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

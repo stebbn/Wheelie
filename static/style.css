@@ -89,6 +89,7 @@ body {
     border-top-right-radius: 20px;
     border-bottom-right-radius: 20px;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .sidebar:hover {
@@ -161,6 +162,42 @@ body {
     padding-top: 0px;
 }
 
+.logout-section {
+    display: flex;
+    flex-direction: column;
+    margin-top: auto;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-top: 2px solid rgba(255, 255, 255, 0.2);
+    padding-top: 20px;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    padding: 10px 0px 20px 20px;
+    color: var(--white);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    gap: 21px;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.logout-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.logout-btn img {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    pointer-events: none;
+    filter: invert(80%) sepia(20%) saturate(400%) hue-rotate(60deg);
+}
+
 .nav-indicator {
     position: absolute;
     left: 0;
@@ -194,6 +231,8 @@ body {
     opacity: 1;
     flex-direction: column;
     margin-left: var(--sidebar-collapsed); /* Creates space for the collapsed sidebar */
+    height: 100%;
+    overflow: auto;
 }
 
 .top-bar {
@@ -218,6 +257,36 @@ body {
 }
 .grid-column:last-child {
     border-right: none;
+}
+
+/* ================= TABLE SCROLL ================= */
+.scroll-table-container {
+    width: 100%;
+    overflow-y: auto;
+    max-height: calc(100vh - 260px);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* ================= DETAIL PANES (SCROLLABLE) ================= */
+.detail-container {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.detail-section {
+    flex: 1 1 0;
+    background: #fff;
+    padding: 18px;
+    border-radius: 10px;
+    max-height: calc(100vh - 240px);
+    overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+    .detail-container { flex-direction: column; }
+    .detail-section { max-height: none; }
 }
 
 /* ================= FORMS ================= */
@@ -447,12 +516,6 @@ table a:hover {
     color: white;
 }
 
-.status-badge.status-under_maintenance,
-.status-badge.status-maintenance {
-    background-color: #FF9800;
-    color: white;
-}
-
 .status-badge.status-paid {
     background-color: #4CAF50;
     color: white;
@@ -630,4 +693,25 @@ h2 {
     color: var(--primary-green);
     margin-top: 20px;
     margin-bottom: 15px;
+}
+
+/* Customer detail: make the Recent Rentals area wider and Stats narrower */
+.detail-container .detail-section.stats {
+    flex: 0 0 240px;
+    max-width: 260px;
+}
+.detail-container .detail-section.rentals {
+    flex: 2 1 0;
+}
+.detail-container .detail-section:first-child {
+    flex: 1 1 0;
+}
+
+@media (max-width: 900px) {
+    .detail-container .detail-section.stats,
+    .detail-container .detail-section.rentals,
+    .detail-container .detail-section:first-child {
+        flex: none;
+        max-width: none;
+    }
 }
