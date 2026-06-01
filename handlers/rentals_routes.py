@@ -25,8 +25,7 @@ def new_rental():
             'customer_id': request.form.get('customer_id'),
             'bike_id': request.form.get('bike_id'),
             'staff_id': session.get("staff_id"),
-            'rental_rate': bike["bike_rate"],
-            'notes': request.form.get('notes') or None
+            'rental_rate': bike["bike_rate"]
         }
         rid = database.get().create_rental(data)
         database.get().log_action(session.get("staff_id"), "create", "rental", rid)
