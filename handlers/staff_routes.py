@@ -4,9 +4,7 @@ from werkzeug.security import generate_password_hash
 import modules.database as database
 from modules.auth import role_required
 
-
 staff_bp = Blueprint('staff', __name__, template_folder='templates')
-
 
 @staff_bp.route('/staff')
 @role_required('admin')
@@ -63,7 +61,6 @@ def edit_staff(sid):
         return redirect(url_for('staff.staff_list'))
 
     return render_template('forms/staff_form.html', staff_member=staff_member)
-
 
 @staff_bp.route('/staff/<int:sid>/toggle', methods=['POST'])
 @role_required('admin')

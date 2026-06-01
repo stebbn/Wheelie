@@ -30,10 +30,10 @@
                 <td>{{ member['role'].title() }}</td>
                 <td>{{ member['contact_number'] }}</td>
                 <td><span class="status-badge status-{{ member['status'] }}">{{ member['status'].title() }}</span></td>
-                <td>
+                <td style="display:flex; justify-content: space-between; align-items: center;">
                     <a href="{{ url_for('staff.edit_staff', sid=member['staff_id']) }}">Edit</a>
                     {% if member['staff_id'] != current_staff_id %}
-                    <form method="post" action="{{ url_for('staff.toggle_staff', sid=member['staff_id']) }}" style="display:inline;">
+                    <form method="post" action="{{ url_for('staff.toggle_staff', sid=member['staff_id']) }}">
                         <button type="submit" class="btn-secondary">
                             {% if member['status'] == 'active' %}Disable{% else %}Enable{% endif %}
                         </button>

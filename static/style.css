@@ -64,6 +64,18 @@ body {
     font-weight: bold;
 }
 
+.error-msg {
+  color: rgb(221, 9, 9); 
+  text-align: center; 
+  margin-top: 10px;
+  min-height: 1.2em; 
+  visibility: hidden; 
+}
+
+.error-msg.visible {
+  visibility: visible; 
+}
+
 /* ================= HOME DASHBOARD ================= */
 .home-screen {
     height: 100vh;
