@@ -62,7 +62,7 @@ def rental_detail(rid):
     preview_amount = None
     if rental and rental['status'] in ['active', 'overdue']:
         rental_start = datetime.fromisoformat(rental['rental_start'])
-        duration_days = max(1, math.ceil((datetime.now() - rental_start).total_seconds() / 86400))
-        preview_amount = round(duration_days * float(rental['rental_rate']), 2)
+        duration_hours = max(1, math.ceil((datetime.now() - rental_start).total_seconds() / 3600))
+        preview_amount = round(duration_hours * float(rental['rental_rate']), 2)
 
     return render_template('rental_detail.html', rental=rental, payment=payment, preview_amount=preview_amount)

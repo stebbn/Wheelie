@@ -457,10 +457,10 @@ class Database:
             return None
         rental_start = datetime.fromisoformat(r['rental_start'])
         rental_end = datetime.now()
-        duration_days = max(1, math.ceil((rental_end - rental_start).total_seconds() / 86400))
+        duration_hours = max(1, math.ceil((rental_end - rental_start).total_seconds() / 3600))
         bike = self.conn.execute("SELECT bike_rate FROM bike WHERE bike_id=?", (r['bike_id'],)).fetchone()
         rate = float(bike['bike_rate']) if bike else 0
-        total_amount = round(duration_days * rate, 2)
+        total_amount = round(duration_hours * rate, 2)
 
         # Insert a return record
         self.conn.execute(
@@ -471,7 +471,7 @@ class Database:
         return {
             'rental_end': rental_end.strftime('%Y-%m-%d %H:%M:%S'),
             'total_amount': total_amount,
-            'duration_days': duration_days,
+            'duration_hours': duration_hours,
         }
 
     def get_active_rentals(self):
