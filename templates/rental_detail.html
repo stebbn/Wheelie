@@ -57,6 +57,7 @@
             </div>
             <button type="submit" class="btn-primary">Process Return</button>
         </form>
+        <a href="{{ url_for('rentals.rentals') }}" class="btn-secondary back-to-rentals">Back to Rentals</a>
     </div>
     {% endif %}
 
@@ -84,6 +85,8 @@
     </div>
     {% endif %}
 
+    {% if rental['status'] not in ['active', 'overdue'] %}
     <a href="{{ url_for('rentals.rentals') }}" class="btn-secondary">Back to Rentals</a>
+    {% endif %}
 </div>
 {% endblock %}

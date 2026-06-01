@@ -301,6 +301,18 @@ body {
     .detail-section { max-height: none; }
 }
 
+/* Back-to-Rentals (scoped to .back-to-rentals): full width but do not stretch vertically */
+.detail-container > a.back-to-rentals,
+.detail-section a.back-to-rentals {
+    display: block;
+    width: 100%;
+    align-self: flex-start;
+    margin-top: 12px;
+    box-sizing: border-box;
+    height: auto;
+    text-align: center;
+}
+
 /* ================= FORMS ================= */
 .form-container {
     background: white;
