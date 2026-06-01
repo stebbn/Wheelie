@@ -121,17 +121,6 @@ class Database:
         rows = self.conn.execute(f"PRAGMA table_info({table})").fetchall()
         return any(row[1] == column or (isinstance(row, dict) and row.get('name') == column) for row in rows)
 
-    def _bike_status_allows_retired(self):
-        row = self.conn.execute(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name='bike'"
-        ).fetchone()
-        if not row:
-            return False
-        sql = row[0] if isinstance(row, (list, tuple)) else row.get('sql') if isinstance(row, dict) else row
-        if not sql:
-            return False
-        return 'retired' in sql.lower()
-
     def _migrate_bike_status(self):
         self.conn.execute("PRAGMA foreign_keys = OFF")
         self.conn.executescript(
@@ -218,14 +207,6 @@ class Database:
         if not self._column_exists("bike", "type"):
             self.conn.execute("ALTER TABLE bike ADD COLUMN type TEXT NOT NULL DEFAULT 'standard'")
         # Only attempt bike-status migration if the `bike` table already exists.
-        row = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bike'").fetchone()
-        if row:
-            try:
-                if not self._bike_status_allows_retired():
-                    self._migrate_bike_status()
-            except Exception:
-                # Non-fatal: if bike status migration fails (existing triggers or schema quirks), continue
-                pass
         
         # Remove size column from bike table if it exists
         if self._column_exists("bike", "size"):
@@ -387,6 +368,19 @@ class Database:
     def get_bike_stats(self):
         r = self.conn.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available, SUM(CASE WHEN status='rented' THEN 1 ELSE 0 END) as rented FROM bike").fetchone()
         return dict(r)
+    
+    def retire_bike(self, bid):
+        bike = self.get_bike(bid)
+        if not bike:
+            return False, 'Bike not found.'
+        if bike['status'] == 'rented':
+            return False, 'Cannot retire a bike that is currently rented.'
+        if bike['status'] == 'retired':
+            return False, 'Bike is already retired.'
+        self.conn.execute("UPDATE bike SET status='retired' WHERE bike_id=?", (bid,))
+        self.conn.commit()
+        return True, 'Bike retired successfully.'
+
 
     # Rentals
     def _update_overdue_rentals(self):

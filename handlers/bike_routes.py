@@ -40,7 +40,7 @@ def new_bike():
 @login_required
 def edit_bike(bid):
     bike = database.get().get_bike(bid)
-    if bike and bike.get("status") == "rented":
+    if bike and bike.get("status") in ("rented", "retired"):
         return redirect(url_for('bikes.bike_detail', bid=bid))
     if request.method == 'POST':
         data = {
@@ -54,5 +54,12 @@ def edit_bike(bid):
         database.get().update_bike(bid, data)
         database.get().log_action(session.get("staff_id"), "update", "bike", bid)
         return redirect(url_for('bikes.bike_detail', bid=bid))
-    
     return render_template('forms/bike_form.html', bike=bike)
+
+@bikes_bp.route('/bike/<int:bid>/retire', methods=['POST'])
+@login_required
+def retire_bike(bid):
+    success, message = database.get().retire_bike(bid)
+    if success:
+        database.get().log_action(session.get("staff_id"), "retire", "bike", bid)
+    return redirect(url_for('bikes.bike_detail', bid=bid))

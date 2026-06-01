@@ -402,6 +402,21 @@ a.back-to-customers {
     margin-right: 10px;
 }
 
+button.btn-danger {
+    background-color: #dc2626 !important;
+    color: white;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.actions form {
+    margin-left: auto;
+}
+
 /* ================= TABLES ================= */
 table {
     width: 100%;
@@ -536,6 +551,11 @@ table a:hover {
 }
 
 .status-badge.status-overdue {
+    background-color: #f44336;
+    color: white;
+}
+
+.status-badge.status-retired {
     background-color: #f44336;
     color: white;
 }
