@@ -1,3 +1,6 @@
+from datetime import datetime
+import math
+
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session
 import modules.database as database
 from modules.auth import login_required
@@ -55,4 +58,11 @@ def rental_detail(rid):
 
     rental = database.get().get_rental(rid)
     payment = database.get().get_payment_for_rental(rid)
-    return render_template('rental_detail.html', rental=rental, payment=payment)
+
+    preview_amount = None
+    if rental and rental['status'] in ['active', 'overdue']:
+        rental_start = datetime.fromisoformat(rental['rental_start'])
+        duration_days = max(1, math.ceil((datetime.now() - rental_start).total_seconds() / 86400))
+        preview_amount = round(duration_days * float(rental['rental_rate']), 2)
+
+    return render_template('rental_detail.html', rental=rental, payment=payment, preview_amount=preview_amount)

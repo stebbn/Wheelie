@@ -33,8 +33,14 @@
                 <span class="value">₱{{ rental['rental_rate'] }}</span>
             </div>
             <div class="detail-item">
-                <span class="label">Total Amount:</span>
-                <span class="value">{{ 'Pending' if rental['total_amount'] is none else '₱' ~ rental['total_amount'] }}</span>
+                <span class="label">{% if rental['status'] in ['active', 'overdue'] %}Amount Due{% else %}Total Amount{% endif %}:</span>
+                <span class="value">
+                    {% if rental['status'] in ['active', 'overdue'] %}
+                        ₱{{ "{:.0f}".format(preview_amount) }}
+                    {% else %}
+                        {{ 'Pending' if rental['total_amount'] is none else '₱' ~ '%.0f' % rental['total_amount'] }}
+                    {% endif %}
+                </span>
             </div>
         </div>
     </div>
@@ -44,8 +50,8 @@
         <h2>Return Bike</h2>
         <form method="post" class="form">
             <div class="form-group">
-                <label>Total Amount</label>
-                <div>Calculated automatically based on rental duration.</div>
+                <label>Amount Due</label>
+                <div>₱{{ "{:.0f}".format(preview_amount) }} — calculated automatically based on rental duration.</div>
             </div>
             <div class="form-group">
                 <label>Payment Method</label>
@@ -55,11 +61,57 @@
                     <option value="card">Card</option>
                 </select>
             </div>
-            <button type="submit" class="btn-primary">Process Return</button>
+            <button type="button" id="processReturnButton" class="btn-primary">Process Return</button>
         </form>
+
+        <div class="modal fade" id="returnConfirmModal" tabindex="-1" aria-labelledby="returnConfirmModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="returnConfirmModalLabel">Confirm Return</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Please confirm that the customer has completed payment before processing the return.</p>
+                        <p><strong>Amount Due:</strong> ₱{{ "{:.0f}".format(preview_amount) }}</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" id="confirmReturnButton" class="btn btn-primary">Confirm Return</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <a href="{{ url_for('rentals.rentals') }}" class="btn-secondary back-to-rentals">Back to Rentals</a>
     </div>
     {% endif %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const returnForm = document.querySelector('.detail-section form.form');
+    const processReturnButton = document.getElementById('processReturnButton');
+    const confirmReturnButton = document.getElementById('confirmReturnButton');
+    const confirmModalElement = document.getElementById('returnConfirmModal');
+
+    if (!returnForm || !processReturnButton || !confirmReturnButton || !confirmModalElement) return;
+
+    const confirmModal = new bootstrap.Modal(confirmModalElement);
+
+    processReturnButton.addEventListener('click', function() {
+        if (returnForm.reportValidity()) {
+            confirmModal.show();
+        }
+    });
+
+    confirmReturnButton.addEventListener('click', function() {
+        confirmModal.hide();
+        returnForm.submit();
+    });
+});
+</script>
+{% endblock %}
 
     {% if payment %}
     <div class="detail-section">
