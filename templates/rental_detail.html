@@ -82,11 +82,8 @@
                 <span class="value">{{ payment['payment_status'].title() }}</span>
             </div>
         </div>
+        <a href="{{ url_for('rentals.rentals') }}" class="btn-secondary">Back to Rentals</a>
     </div>
-    {% endif %}
-
-    {% if rental['status'] not in ['active', 'overdue'] %}
-    <a href="{{ url_for('rentals.rentals') }}" class="btn-secondary">Back to Rentals</a>
     {% endif %}
 </div>
 {% endblock %}
