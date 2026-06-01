@@ -9,7 +9,6 @@ rentals_bp = Blueprint('rentals', __name__, template_folder='templates')
 def rentals():
     status = request.args.get('status', 'all')
     rentals_list = database.get().get_all_rentals(status)
-    # Fetch data needed for the new rental modal form
     customers_list = database.get().get_all_customers()
     bikes = database.get().get_available_bikes()
     return render_template('rentals.html', rentals=rentals_list, filter_status=status, customers=customers_list, bikes=bikes)
@@ -44,7 +43,6 @@ def rental_detail(rid):
         if not totals:
             return redirect(url_for('rentals.rentals'))
         
-        # Record payment
         payment_data = {
             'rental_id': rid,
             'amount_paid': totals["total_amount"],

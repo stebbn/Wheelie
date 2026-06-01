@@ -5,7 +5,6 @@
 
 # files
 data/data.db
-static/uploads/
 
 # C extensions
 *.so

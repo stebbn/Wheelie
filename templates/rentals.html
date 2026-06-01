@@ -55,13 +55,10 @@
             <div class="modal-body">
                 <form id="new-rental-form">
                     <div class="mb-3">
-                        <label for="customer_id" class="form-label">Customer</label>
-                        <select name="customer_id" id="customer_id" class="form-select" required>
-                            <option value="">Select a customer...</option>
-                            {% for customer in customers %}
-                            <option value="{{ customer['customer_id'] }}">{{ customer['first_name'] }} {{ customer['last_name'] }}</option>
-                            {% endfor %}
-                        </select>
+                        <label for="customer_search" class="form-label">Customer</label>
+                        <input type="text" id="customer_search" class="form-control" placeholder="Customer Name" autocomplete="off" required>
+                        <input type="hidden" name="customer_id" id="customer_id">
+                        <div id="customer_dropdown" class="dropdown-list" style="display: none; position: absolute; background: white; border: 1px solid #ccc; width: 300px; max-height: 200px; overflow-y: auto; z-index: 1000;"></div>
                     </div>
                     <div class="mb-3">
                         <label for="bike_id" class="form-label">Available Bike</label>
@@ -93,12 +90,69 @@ document.addEventListener('DOMContentLoaded', function() {
     const openBtn = document.getElementById('new-rental-btn');
     const rentalForm = document.getElementById('new-rental-form');
 
+    const customerSearch = document.getElementById('customer_search');
+    const customerIdField = document.getElementById('customer_id');
+    const customerDropdown = document.getElementById('customer_dropdown');
+
+    const customers = [
+        {% for customer in customers %}
+        {id: {{ customer['customer_id'] }}, name: '{{ customer['first_name'] }} {{ customer['last_name'] }}' }{{ "," if not loop.last else "" }}
+        {% endfor %}
+    ]; // ignore ide errors cuz jinja
+
+    customerSearch.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        customerDropdown.innerHTML = '';
+
+        if (query.length === 0) {
+            customerDropdown.style.display = 'none';
+            return;
+        }
+
+        const filtered = customers.filter(c => c.name.toLowerCase().includes(query));
+
+        if (filtered.length === 0) {
+            customerDropdown.style.display = 'none';
+            return;
+        }
+
+        filtered.forEach(customer => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.textContent = customer.name;
+            item.style.padding = '10px';
+            item.style.cursor = 'pointer';
+            item.style.borderBottom = '1px solid #eee';
+            item.addEventListener('click', function() {
+                customerSearch.value = customer.name;
+                customerIdField.value = customer.id;
+                customerDropdown.style.display = 'none';
+            });
+            item.addEventListener('mouseover', function() {
+                this.style.backgroundColor = '#f0f0f0';
+            });
+            item.addEventListener('mouseout', function() {
+                this.style.backgroundColor = 'transparent';
+            });
+            customerDropdown.appendChild(item);
+        });
+
+        customerDropdown.style.display = 'block';
+    });
+    document.addEventListener('click', function(e) {
+        if (e.target !== customerSearch && e.target !== customerDropdown) {
+            customerDropdown.style.display = 'none';
+        }
+    });
+
+    // modal
     openBtn.addEventListener('click', () => {
         modal.show();
     });
 
     modalElement.addEventListener('hidden.bs.modal', function () {
         rentalForm.reset();
+        customerDropdown.style.display = 'none';
     });
 
     const rateField = document.getElementById('rental_rate_display');
@@ -110,6 +164,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     rentalForm.addEventListener('submit', function(event) {
         event.preventDefault(); 
+        
+        if (!customerIdField.value) {
+            alert('Please select a customer.');
+            return;
+        }
+
         const formData = new FormData(rentalForm);
 
         fetch("{{ url_for('rentals.new_rental') }}", {

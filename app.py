@@ -1,10 +1,13 @@
 import os
 import webview
+
 from flask import Flask, render_template, request, redirect, url_for, session
 
 from screeninfo import get_monitors
 import modules.database as database
 from modules.auth import current_staff, login_required
+from modules.appFileHandler import resource_path
+from modules.utils import play_sound
 
 from handlers.bike_routes import bikes_bp
 from handlers.customers_routes import customers_bp
@@ -85,5 +88,10 @@ if __name__ == '__main__':
     x_pos = (screen_width - window_width) // 2
     y_pos = (screen_height - window_height) // 2
 
+    def onLoaded():
+        window.events.loaded -= onLoaded
+        play_sound("sounds/bellring.wav", 0.1)
+
     window = webview.create_window('Wheelie', app, width=window_width, height=window_height, x=x_pos, y=y_pos, resizable=True)
-    webview.start()
+    window.events.loaded += onLoaded
+    webview.start(debug=False)
