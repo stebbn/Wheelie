@@ -34,7 +34,7 @@
                 <td>{{ rental['bike_code'] }} - {{ rental['brand'] }} {{ rental['model'] }}</td>
                 <td>{{ rental['rental_start'] }}</td>
                 <td>{{ rental['rental_end'] or '-' }}</td>
-                <td>₱{{ rental['total_amount'] or 'Pending' }}</td>
+                <td>{{ 'Pending' if rental['total_amount'] is none else '₱' ~ rental['total_amount'] }}</td>
                 <td><span class="status-badge status-{{ rental['status'] }}">{{ rental['status'].title() }}</span></td>
                 <td><a href="{{ url_for('rentals.rental_detail', rid=rental['rental_id']) }}">View</a></td>
             </tr>

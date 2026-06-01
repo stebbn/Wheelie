@@ -34,7 +34,7 @@
             </div>
             <div class="detail-item">
                 <span class="label">Total Amount:</span>
-                <span class="value">₱{{ rental['total_amount'] or 'Pending' }}</span>
+                <span class="value">{{ 'Pending' if rental['total_amount'] is none else '₱' ~ rental['total_amount'] }}</span>
             </div>
         </div>
     </div>
