@@ -313,6 +313,11 @@ body {
     text-align: center;
 }
 
+/* Back-to-Customers (scoped to .back-to-customers): centered text */
+a.back-to-customers {
+    text-align: center;
+}
+
 /* ================= FORMS ================= */
 .form-container {
     background: white;
