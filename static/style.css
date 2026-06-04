@@ -407,6 +407,10 @@ button.btn-danger {
     color: white;
 }
 
+button.btn-danger:hover {
+    background-color: #b91c1c !important;
+}
+
 .actions {
     display: flex;
     align-items: center;
