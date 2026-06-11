@@ -1,7 +1,6 @@
 import os
 import webview
-
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
 
 from screeninfo import get_monitors
 import modules.database as database
@@ -19,7 +18,7 @@ from handlers.activity_routes import activity_bp
 app = Flask(__name__)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 app.secret_key = os.environ.get("SECRET_KEY", "wheelie-dev-secret")
-app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "ids")
+app.config["UPLOAD_FOLDER"] = "data/ids"
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 database.init()
@@ -68,13 +67,28 @@ def login():
 @app.route('/home')
 @login_required
 def home():
+    user  = session.get("username")
     stats = database.get().get_dashboard_stats()
-    return render_template('home.html', stats=stats)
+    return render_template('home.html', stats=stats, user=user)
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+@app.route('/customer-id/<filename>')
+@login_required
+def get_customer_id(filename):
+    file_path = resource_path(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+    if os.path.exists(file_path):
+        return send_file(file_path)
+    return redirect(url_for('home'))
+
+@app.route('/play-click-sound', methods=['POST'])
+def play_click_sound():
+    sound_type = request.json.get('type', 'click')
+    play_sound(f"sounds/{sound_type}.wav", 0.2)
+    return '', 204
 
 # if __name__ == '__main__':
 #     app.run(debug=True)

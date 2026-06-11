@@ -34,7 +34,7 @@
                     <a href="{{ url_for('staff.edit_staff', sid=member['staff_id']) }}">Edit</a>
                     {% if member['staff_id'] != current_staff_id %}
                     <form method="post" action="{{ url_for('staff.toggle_staff', sid=member['staff_id']) }}">
-                        <button type="submit" class="btn-secondary">
+                        <button type="submit" class="btn-secondary" sound-type="major">
                             {% if member['status'] == 'active' %}Disable{% else %}Enable{% endif %}
                         </button>
                     </form>

@@ -61,7 +61,7 @@
                     <option value="card">Card</option>
                 </select>
             </div>
-            <button type="button" id="processReturnButton" class="btn-primary">Process Return</button>
+            <button type="button" id="processReturnButton" class="btn-primary" sound-type="major">Process Return</button>
         </form>
 
         <div class="modal fade" id="returnConfirmModal" tabindex="-1" aria-labelledby="returnConfirmModalLabel" aria-hidden="true">
@@ -76,8 +76,8 @@
                         <p><strong>Amount Due:</strong> ₱{{ "{:.0f}".format(preview_amount) }}</p>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" id="confirmReturnButton" class="btn btn-primary">Confirm Return</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" sound-type="minor">Cancel</button>
+                        <button type="button" id="confirmReturnButton" class="btn btn-primary" sound-type="major">Confirm Return</button>
                     </div>
                 </div>
             </div>

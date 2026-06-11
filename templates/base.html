@@ -65,7 +65,7 @@
 
             <div class="logout-section">
                 <a href="{{ url_for('logout') }}" 
-                    class="logout-btn" data-route="logout">
+                    class="logout-btn" data-route="logout" sound-type="major">
                     <img src="{{ url_for('static', filename='assets/imgs/logout_icon.png') }}" alt="Logout">
                     <span>Logout</span>
                 </a>
@@ -177,6 +177,24 @@
         }
         closethatbar();
     });
+    </script>
+
+    <script> // fancy sounds
+        document.addEventListener('DOMContentLoaded', function() {
+            const clickableElements = document.querySelectorAll('button, a, input[type="submit"], input[type="button"]');
+            
+            clickableElements.forEach(element => {
+                element.addEventListener('click', function(e) {
+                    const soundType = element.getAttribute('sound-type') || 'click';
+                 
+                    fetch('{{ url_for("play_click_sound") }}', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({type: soundType})
+                    }).catch(err => {});
+                });
+            });
+        });
     </script>
 
     {% block extra_scripts %}{% endblock %}

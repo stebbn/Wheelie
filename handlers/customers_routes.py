@@ -3,7 +3,9 @@ import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, session, current_app
 from werkzeug.utils import secure_filename
 import modules.database as database
+
 from modules.auth import login_required
+from modules.appFileHandler import resource_path
 
 customers_bp = Blueprint('customers', __name__, template_folder='templates')
 
@@ -20,9 +22,13 @@ def _save_valid_id(file):
     filename = secure_filename(file.filename)
     _, ext = os.path.splitext(filename)
     stored_name = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], stored_name)
+
+    id_path = f"{current_app.config["UPLOAD_FOLDER"]}/{stored_name}"
+
+    file_path = resource_path(id_path)
     file.save(file_path)
-    return f"uploads/ids/{stored_name}"
+
+    return id_path
 
 @customers_bp.route('/customer/new', methods=['GET', 'POST'])
 @login_required

@@ -1,7 +1,15 @@
 import sqlite3
 import random
+import sys
+import os
 
-def seed_large_dataset(db_path="data/database.db"):
+# Add parent directory to path to import modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from modules.appFileHandler import resource_path
+
+def seed_large_dataset(db_path=None):
+    if db_path is None:
+        db_path = resource_path("data/database.db")
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON;")
     cursor = conn.cursor()

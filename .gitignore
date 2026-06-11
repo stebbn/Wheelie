@@ -4,7 +4,7 @@
 *$py.class
 
 # files
-data/data.db
+*.db
 
 # C extensions
 *.so

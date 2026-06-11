@@ -44,12 +44,12 @@
         </div>
         <div class="actions">
             {% if bike['status'] == 'available' %}
-            <a href="{{ url_for('bikes.edit_bike', bid=bike['bike_id']) }}" class="btn-primary">Edit</a>
+            <a href="{{ url_for('bikes.edit_bike', bid=bike['bike_id']) }}" class="btn-primary" sound-type="major">Edit</a>
             {% endif %}
-            <a href="{{ url_for('bikes.registry') }}" class="btn-secondary">Back</a>
+            <a href="{{ url_for('bikes.registry') }}" class="btn-secondary" sound-type="minor">Back</a>
             {% if bike['status'] == 'available' %}
             <form method="POST" action="{{ url_for('bikes.retire_bike', bid=bike['bike_id']) }}" style="display:inline;">
-                <button type="submit" class="btn-danger">Retire Bike</button>
+                <button type="submit" class="btn-danger" sound-type="major">Retire Bike</button>
             </form>
             {% endif %}
         </div>

@@ -28,7 +28,12 @@
             <div class="form-group">
                 <label>Valid ID</label>
                 {% if customer['valid_id'] %}
-                <div><a href="{{ url_for('static', filename=customer['valid_id']) }}" target="_blank">View current ID</a></div>
+                <div>
+                    <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#idModal" 
+                        sound-type="minor">
+                        View current ID
+                    </button>
+                </div>
                 {% endif %}
                 <input type="file" name="valid_id" accept="image/*,application/pdf">
             </div>
@@ -38,8 +43,8 @@
                 <div>{{ customer['staff_name'] }} ({{ customer['staff_role'].title() }})</div>
             </div>
             {% endif %}
-            <button type="submit" class="btn-primary">Update</button>
-            <a href="{{ url_for('customers.customers') }}" class="btn-secondary back-to-customers">Back</a>
+            <button type="submit" class="btn-primary" sound-type="major">Update</button>
+            <a href="{{ url_for('customers.customers') }}" class="btn-secondary back-to-customers" sound-type="minor">Back</a>
         </form>
     </div>
     
@@ -47,11 +52,11 @@
         <h2>Statistics</h2>
         <div class="stats">
             <div class="stat">
-                <span class="stat-label">Total Rentals</span>
+                <span class="stat-label">Total Rentals </span>
                 <span class="stat-value">{{ stats['total_rentals'] }}</span>
             </div>
             <div class="stat">
-                <span class="stat-label">Total Spent</span>
+                <span class="stat-label">Total Spent  </span>
                 <span class="stat-value">₱{{ stats['total_spent'] }}</span>
             </div>
         </div>
@@ -85,4 +90,24 @@
         </div>
     </div>
 </div>
+
+
+{% if customer['valid_id'] %}
+<div class="modal fade" id="idModal" tabindex="-1" aria-labelledby="idModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="idModalLabel">Valid ID</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="{{ url_for('get_customer_id', filename=customer['valid_id'].split('/')[-1]) }}" alt="Valid ID" style="max-width: 100%; max-height: 600px;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" sound-type="minor">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

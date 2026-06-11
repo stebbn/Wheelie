@@ -88,11 +88,11 @@ body {
 }
 
 .sidebar {
-    position: absolute; /* Takes the sidebar out of the normal document flow */
+    position: absolute; 
     top: 0;
     left: 0;
     height: 100%;
-    z-index: 10; /* Ensures the sidebar is on top of the main content */
+    z-index: 10; 
 
     background-color: var(--primary-green);
     width: var(--sidebar-collapsed);
@@ -158,7 +158,7 @@ body {
     font-weight: bold;
     font-size: 0.9rem;
     white-space: nowrap;
-    gap: 21px; /* replaces needing margin-right on the img */
+    gap: 21px;
 }
 
 .nav-item img {
@@ -237,12 +237,11 @@ body {
     opacity: 0.8;
 }
 
-/* Main Content Area */
 .main-content {
     padding: 20px;
     opacity: 1;
     flex-direction: column;
-    margin-left: var(--sidebar-collapsed); /* Creates space for the collapsed sidebar */
+    margin-left: var(--sidebar-collapsed);
     height: 100%;
     overflow: auto;
 }
@@ -274,6 +273,7 @@ body {
 /* ================= TABLE SCROLL ================= */
 .scroll-table-container {
     width: 100%;
+    overflow-x: auto;
     overflow-y: auto;
     max-height: calc(100vh - 260px);
     padding: 20px;
@@ -301,7 +301,6 @@ body {
     .detail-section { max-height: none; }
 }
 
-/* Back-to-Rentals (scoped to .back-to-rentals): full width but do not stretch vertically */
 .detail-container > a.back-to-rentals,
 .detail-section a.back-to-rentals {
     display: block;
@@ -437,8 +436,9 @@ table thead {
 }
 
 table th, table td {
-    padding: 12px 15px;
+    padding: 10px 12px;
     text-align: left;
+    font-size: 0.95rem;
 }
 
 table tbody tr {
@@ -460,9 +460,29 @@ table a:hover {
 }
 
 /* ================= DASHBOARD ================= */
+
+.dash-top-bar {
+    opacity: 1;
+    padding: 10px;
+    border-radius: 10px;
+    margin-top: 50px;
+    margin-bottom: 50px;
+}
+
+.hello-text {
+    font-size: 3rem;
+    font-weight: bold;
+}
+
+.user-name {
+    color: var(--primary-green);
+    font-size: 3rem;
+    font-weight: bold;
+}
+
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
     margin-bottom: 30px;
 }
@@ -538,7 +558,7 @@ table a:hover {
 .status-badge {
     display: inline-block;
     padding: 5px 10px;
-    border-radius: 20px;
+    border-radius: 5px;
     font-size: 0.85rem;
     font-weight: bold;
 }
@@ -666,7 +686,6 @@ table a:hover {
     border-color: #5c636a;
 }
 
-/* Form styling within modals */
 .modal-body .form-label {
     font-weight: 500;
     color: #333;
@@ -748,10 +767,35 @@ h2 {
     margin-bottom: 15px;
 }
 
-/* Customer detail: make the Recent Rentals area wider and Stats narrower */
 .detail-container .detail-section.stats {
     flex: 0 0 240px;
     max-width: 260px;
+}
+
+.detail-section.stats .stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.detail-section.stats .stat {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+}
+
+.detail-section.stats .stat-label {
+    font-weight: 600;
+    color: #666;
+    text-align: left;
+}
+
+.detail-section.stats .stat-value {
+    font-weight: bold;
+    color: var(--primary-green);
+    font-size: 1.1rem;
+    text-align: right;
 }
 .detail-container .detail-section.rentals {
     flex: 2 1 0;

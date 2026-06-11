@@ -1,7 +1,6 @@
 from functools import wraps
 from flask import session, redirect, url_for
 
-
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
@@ -10,7 +9,6 @@ def login_required(view):
         return view(*args, **kwargs)
 
     return wrapped
-
 
 def role_required(*roles):
     def decorator(view):
@@ -25,7 +23,6 @@ def role_required(*roles):
         return wrapped
 
     return decorator
-
 
 def current_staff():
     if not session.get("staff_id"):
