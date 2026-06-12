@@ -615,8 +615,8 @@ class Database:
 
         if planned_return and rental_end > planned_return:
             normal_hours = max(1, math.ceil((planned_return - rental_start).total_seconds() / 3600))
-            overtime_hours = math.ceil((rental_end - planned_return).total_seconds() / 3600)
-            total_amount = round((normal_hours * rate) + (overtime_hours * rate * 1.5), 2)
+            overtime_hours = math.floor((rental_end - planned_return).total_seconds() / 3600)
+            total_amount = round((normal_hours * rate) + (overtime_hours * rate * 1.2), 2)
         else:
             duration_hours = max(1, math.ceil((rental_end - rental_start).total_seconds() / 3600))
             total_amount = round(duration_hours * rate, 2)
