@@ -117,6 +117,8 @@ class Database:
         """)
         self.conn.commit()
 
+    # Line under are solely for migrating the old schema to the new one
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     def _column_exists(self, table, column):
         rows = self.conn.execute(f"PRAGMA table_info({table})").fetchall()
         return any(row[1] == column or (isinstance(row, dict) and row.get('name') == column) for row in rows)
@@ -159,7 +161,6 @@ class Database:
         self._create_tables()
 
     def _remove_bike_size_column(self):
-        """Remove size column from bike table by recreating it without the size field."""
         self.conn.execute("PRAGMA foreign_keys = OFF")
         self.conn.executescript(
             """
@@ -195,7 +196,7 @@ class Database:
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.commit()
 
-    def _migrate_schema(self):
+    def _migrate_schema(self): 
         if not self._column_exists("customer", "staff_id"):
             self.conn.execute(
                 "ALTER TABLE customer ADD COLUMN staff_id INTEGER REFERENCES staff(staff_id) ON UPDATE CASCADE ON DELETE SET NULL"
@@ -206,58 +207,68 @@ class Database:
             self.conn.execute("ALTER TABLE bike ADD COLUMN bike_rate DECIMAL(8,2) NOT NULL DEFAULT 0")
         if not self._column_exists("bike", "type"):
             self.conn.execute("ALTER TABLE bike ADD COLUMN type TEXT NOT NULL DEFAULT 'standard'")
-        # Only attempt bike-status migration if the `bike` table already exists.
-        
-        # Remove size column from bike table if it exists
+     
         if self._column_exists("bike", "size"):
             self._remove_bike_size_column()
         
-        # Migrate mechanic staff to cashier role
         self.conn.execute("UPDATE staff SET role='cashier' WHERE role='mechanic'")
 
-        # Only run bike updates if bike table exists (defensive for fresh DBs)
         bike_row = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bike'").fetchone()
         if bike_row:
             self.conn.execute("UPDATE bike SET bike_rate=COALESCE(bike_rate, 0)")
             self.conn.execute("UPDATE bike SET type=COALESCE(type, 'standard')")
             self.conn.execute("UPDATE bike SET status='available' WHERE status='under_maintenance'")
-        # Ensure rents has staff_id column for recording which staff processed the rental
+            
         row = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rents'").fetchone()
         if row and not self._column_exists('rents', 'staff_id'):
             self.conn.execute("ALTER TABLE rents ADD COLUMN staff_id INTEGER")
             self.conn.execute("CREATE INDEX IF NOT EXISTS idx_rents_staff ON rents(staff_id)")
         self.conn.commit()
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
 
-    
-    # Auth
+    # STAFF ----------------------------------------------------------------------------------------------------------------------------------------------
+
     def get_staff_by_username(self, username):
         r = self.conn.execute("SELECT * FROM staff WHERE username=? AND status='active'", (username,)).fetchone()
         return dict(r) if r else None
     
     def verify_user(self, username, password):
         user = self.conn.execute("SELECT * FROM staff WHERE username = ? AND status='active'", (username,)).fetchone()
-
         if user and check_password_hash(user['password_hash'], password):
             return True
         else:
             return False
 
-    # Staff
     def get_all_staff(self):
-        return [dict(r) for r in self.conn.execute("SELECT * FROM staff ORDER BY last_name,first_name").fetchall()]
+        query = "SELECT * FROM staff ORDER BY last_name, first_name"
+        return [dict(r) for r in self.conn.execute(query).fetchall()]
 
     def get_staff(self, sid):
         r = self.conn.execute("SELECT * FROM staff WHERE staff_id=?", (sid,)).fetchone()
         return dict(r) if r else None
 
     def create_staff(self, d):
-        self.conn.execute("INSERT INTO staff(username,password_hash,first_name,last_name,role,contact_number,status) VALUES(:username,:password_hash,:first_name,:last_name,:role,:contact_number,'active')", d)
+        query = """
+            INSERT INTO staff (username, password_hash, first_name, last_name, role, contact_number, status) 
+            VALUES (:username, :password_hash, :first_name, :last_name, :role, :contact_number, 'active')
+        """
+        self.conn.execute(query, d)
         self.conn.commit()
         return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def update_staff(self, sid, d):
         d["staff_id"] = sid
-        self.conn.execute("UPDATE staff SET username=:username,first_name=:first_name,last_name=:last_name,role=:role,contact_number=:contact_number,status=:status WHERE staff_id=:staff_id", d)
+        query = """
+            UPDATE staff 
+            SET username = :username, 
+                first_name = :first_name, 
+                last_name = :last_name, 
+                role = :role, 
+                contact_number = :contact_number, 
+                status = :status 
+            WHERE staff_id = :staff_id
+        """
+        self.conn.execute(query, d)
         self.conn.commit()
 
     def update_staff_password(self, sid, pw_hash):
@@ -268,46 +279,84 @@ class Database:
         self.conn.execute("UPDATE staff SET status=? WHERE staff_id=?", (status, sid))
         self.conn.commit()
 
-    # Customers
+    # CUSTOMERS -----------------------------------------------------------------------------------------------------------------------------------------
+
     def get_all_customers(self, search=""):
         q = f"%{search}%"
-        return [dict(r) for r in self.conn.execute("SELECT * FROM customer WHERE first_name LIKE ? OR last_name LIKE ? OR contact_number LIKE ? OR email LIKE ? ORDER BY last_name,first_name", (q,q,q,q)).fetchall()]
+        query = """
+            SELECT * FROM customer 
+            WHERE first_name LIKE ? 
+               OR last_name LIKE ? 
+               OR contact_number LIKE ? 
+               OR email LIKE ? 
+            ORDER BY last_name, first_name
+        """
+        return [dict(r) for r in self.conn.execute(query, (q, q, q, q)).fetchall()]
 
     def get_customer(self, cid):
-        r = self.conn.execute(
-            "SELECT c.*,s.first_name||' '||s.last_name AS staff_name,s.role AS staff_role "
-            "FROM customer c LEFT JOIN staff s ON c.staff_id=s.staff_id WHERE c.customer_id=?",
-            (cid,),
-        ).fetchone()
+        query = """
+            SELECT c.*, s.first_name || ' ' || s.last_name AS staff_name, s.role AS staff_role
+            FROM customer c
+            LEFT JOIN staff s ON c.staff_id = s.staff_id
+            WHERE c.customer_id = ?
+        """
+        r = self.conn.execute(query, (cid,)).fetchone()
         return dict(r) if r else None
 
     def create_customer(self, d):
-        self.conn.execute(
-            "INSERT INTO customer(first_name,last_name,contact_number,email,staff_id,valid_id) "
-            "VALUES(:first_name,:last_name,:contact_number,:email,:staff_id,:valid_id)",
-            d,
-        )
+        query = """
+            INSERT INTO customer (first_name, last_name, contact_number, email, staff_id, valid_id)
+            VALUES (:first_name, :last_name, :contact_number, :email, :staff_id, :valid_id)
+        """
+        self.conn.execute(query, d)
         self.conn.commit()
         return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def update_customer(self, cid, d):
         d["customer_id"] = cid
-        self.conn.execute(
-            "UPDATE customer SET first_name=:first_name,last_name=:last_name,contact_number=:contact_number,"
-            "email=:email,valid_id=:valid_id WHERE customer_id=:customer_id",
-            d,
-        )
+        query = """
+            UPDATE customer 
+            SET first_name = :first_name, 
+                last_name = :last_name, 
+                contact_number = :contact_number,
+                email = :email, 
+                valid_id = :valid_id 
+            WHERE customer_id = :customer_id
+        """
+        self.conn.execute(query, d)
         self.conn.commit()
 
     def get_customer_rentals(self, cid):
-        rows = self.conn.execute(
-            "SELECT rents.rental_id, rents.customer_id, rents.bike_id, rents.staff_id, s.first_name||' '||s.last_name AS staff_name, rents.rental_start, "
-            "b.bike_code, b.brand, b.model, b.bike_rate AS rental_rate, "
-            "(SELECT rental_end FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS rental_end, "
-            "(SELECT total_amount FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS total_amount "
-            "FROM rents LEFT JOIN staff s ON rents.staff_id=s.staff_id JOIN bike b ON rents.bike_id=b.bike_id WHERE rents.customer_id=? ORDER BY rents.rental_start DESC LIMIT 10",
-            (cid,)
-        ).fetchall()
+        query = """
+            SELECT 
+                rents.rental_id, 
+                rents.customer_id, 
+                rents.bike_id, 
+                rents.staff_id, 
+                s.first_name || ' ' || s.last_name AS staff_name, 
+                rents.rental_start,
+                b.bike_code, 
+                b.brand, 
+                b.model, 
+                b.bike_rate AS rental_rate,
+                (SELECT rental_end FROM returns 
+                 WHERE customer_id = rents.customer_id 
+                   AND bike_id = rents.bike_id 
+                   AND rental_end >= rents.rental_start 
+                 ORDER BY rental_end LIMIT 1) AS rental_end,
+                (SELECT total_amount FROM returns 
+                 WHERE customer_id = rents.customer_id 
+                   AND bike_id = rents.bike_id 
+                   AND rental_end >= rents.rental_start 
+                 ORDER BY rental_end LIMIT 1) AS total_amount
+            FROM rents 
+            LEFT JOIN staff s ON rents.staff_id = s.staff_id 
+            JOIN bike b ON rents.bike_id = b.bike_id 
+            WHERE rents.customer_id = ? 
+            ORDER BY rents.rental_start DESC 
+            LIMIT 10
+        """
+        rows = self.conn.execute(query, (cid,)).fetchall()
 
         result = []
         for r in rows:
@@ -322,51 +371,98 @@ class Database:
         return result
 
     def get_customer_stats(self, cid):
-        # Count returned rents and sum amounts from returns mapped to rents by customer and bike
-        total_rentals = self.conn.execute(
-            "SELECT COUNT(*) FROM rents WHERE EXISTS (SELECT 1 FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start) AND rents.customer_id=?",
-            (cid,)
-        ).fetchone()[0]
-        total_spent = self.conn.execute(
-            "SELECT COALESCE(SUM((SELECT total_amount FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start ORDER BY returns.rental_end LIMIT 1)),0) FROM rents WHERE rents.customer_id=?",
-            (cid,)
-        ).fetchone()[0]
+        query_rentals = """
+            SELECT COUNT(*) FROM rents 
+            WHERE EXISTS (
+                SELECT 1 FROM returns 
+                WHERE returns.customer_id = rents.customer_id 
+                  AND returns.bike_id = rents.bike_id 
+                  AND returns.rental_end >= rents.rental_start
+            ) 
+            AND rents.customer_id = ?
+        """
+        total_rentals = self.conn.execute(query_rentals, (cid,)).fetchone()[0]
+
+        query_spent = """
+            SELECT COALESCE(SUM((
+                SELECT total_amount FROM returns 
+                WHERE returns.customer_id = rents.customer_id 
+                  AND returns.bike_id = rents.bike_id 
+                  AND returns.rental_end >= rents.rental_start 
+                ORDER BY returns.rental_end LIMIT 1
+            )), 0) 
+            FROM rents 
+            WHERE rents.customer_id = ?
+        """
+        total_spent = self.conn.execute(query_spent, (cid,)).fetchone()[0]
+        
         return {'total_rentals': total_rentals, 'total_spent': total_spent}
 
-    # Bikes
+    # BIKES ----------------------------------------------------------------------------------------------------------------------------------------------
+    
     def get_all_bikes(self, search="", status="all"):
         q = f"%{search}%"
         if status != "all":
-            return [dict(r) for r in self.conn.execute("SELECT * FROM bike WHERE (bike_code LIKE ? OR brand LIKE ? OR model LIKE ? OR color LIKE ?) AND status=? ORDER BY bike_code", (q,q,q,q,status)).fetchall()]
-        return [dict(r) for r in self.conn.execute("SELECT * FROM bike WHERE bike_code LIKE ? OR brand LIKE ? OR model LIKE ? OR color LIKE ? ORDER BY bike_code", (q,q,q,q)).fetchall()]
+            query = """
+                SELECT * FROM bike 
+                WHERE (bike_code LIKE ? OR brand LIKE ? OR model LIKE ? OR color LIKE ?) 
+                  AND status = ? 
+                ORDER BY bike_code
+            """
+            return [dict(r) for r in self.conn.execute(query, (q, q, q, q, status)).fetchall()]
+            
+        query = """
+            SELECT * FROM bike 
+            WHERE bike_code LIKE ? 
+               OR brand LIKE ? 
+               OR model LIKE ? 
+               OR color LIKE ? 
+            ORDER BY bike_code
+        """
+        return [dict(r) for r in self.conn.execute(query, (q, q, q, q)).fetchall()]
 
     def get_bike(self, bid):
-        r = self.conn.execute("SELECT * FROM bike WHERE bike_id=?", (bid,)).fetchone()
+        query = "SELECT * FROM bike WHERE bike_id = ?"
+        r = self.conn.execute(query, (bid,)).fetchone()
         return dict(r) if r else None
 
     def get_available_bikes(self):
-        return [dict(r) for r in self.conn.execute("SELECT * FROM bike WHERE status='available' ORDER BY bike_code").fetchall()]
+        query = "SELECT * FROM bike WHERE status = 'available' ORDER BY bike_code"
+        return [dict(r) for r in self.conn.execute(query).fetchall()]
 
     def create_bike(self, d):
-        self.conn.execute(
-            "INSERT INTO bike(bike_code,brand,model,color,bike_rate,type,status) "
-            "VALUES(:bike_code,:brand,:model,:color,:bike_rate,:type,'available')",
-            d,
-        )
+        query = """
+            INSERT INTO bike (bike_code, brand, model, color, bike_rate, type, status) 
+            VALUES (:bike_code, :brand, :model, :color, :bike_rate, :type, 'available')
+        """
+        self.conn.execute(query, d)
         self.conn.commit()
         return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def update_bike(self, bid, d):
         d["bike_id"] = bid
-        self.conn.execute(
-            "UPDATE bike SET bike_code=:bike_code,brand=:brand,model=:model,color=:color,"
-            "bike_rate=:bike_rate,type=:type WHERE bike_id=:bike_id",
-            d,
-        )
+        query = """
+            UPDATE bike 
+            SET bike_code = :bike_code, 
+                brand = :brand, 
+                model = :model, 
+                color = :color, 
+                bike_rate = :bike_rate, 
+                type = :type 
+            WHERE bike_id = :bike_id
+        """
+        self.conn.execute(query, d)
         self.conn.commit()
 
     def get_bike_stats(self):
-        r = self.conn.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available, SUM(CASE WHEN status='rented' THEN 1 ELSE 0 END) as rented FROM bike").fetchone()
+        query = """
+            SELECT 
+                COUNT(*) as total, 
+                SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) as available, 
+                SUM(CASE WHEN status = 'rented' THEN 1 ELSE 0 END) as rented 
+            FROM bike
+        """
+        r = self.conn.execute(query).fetchone()
         return dict(r)
     
     def retire_bike(self, bid):
@@ -381,23 +477,38 @@ class Database:
         self.conn.commit()
         return True, 'Bike retired successfully.'
 
-
-    # Rentals
-    def _update_overdue_rentals(self):
-        # No-op: overdue is computed dynamically for `rents` during queries
-        return
+    # RENTALS ----------------------------------------------------------------------------------------------------------------------------------------------
 
     def get_all_rentals(self, status="all"):
-        # Fetch rents and compute return info via subqueries; status is computed in Python
-        rows = self.conn.execute(
-            "SELECT rents.rental_id, rents.customer_id, c.first_name||' '||c.last_name AS customer_name, "
-            "rents.staff_id, s.first_name||' '||s.last_name AS staff_name, "
-            "b.bike_code, b.brand, b.model, b.bike_rate as rental_rate, rents.rental_start, "
-            "(SELECT rental_end FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS rental_end, "
-            "(SELECT total_amount FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS total_amount "
-            "FROM rents JOIN customer c ON rents.customer_id=c.customer_id LEFT JOIN staff s ON rents.staff_id=s.staff_id JOIN bike b ON rents.bike_id=b.bike_id "
-            "ORDER BY rents.rental_start DESC"
-        ).fetchall()
+        query = """
+            SELECT 
+                rents.rental_id, 
+                rents.customer_id, 
+                c.first_name || ' ' || c.last_name AS customer_name, 
+                rents.staff_id, 
+                s.first_name || ' ' || s.last_name AS staff_name, 
+                b.bike_code, 
+                b.brand, 
+                b.model, 
+                b.bike_rate AS rental_rate, 
+                rents.rental_start,
+                (SELECT rental_end FROM returns 
+                 WHERE customer_id = rents.customer_id 
+                   AND bike_id = rents.bike_id 
+                   AND rental_end >= rents.rental_start 
+                 ORDER BY rental_end LIMIT 1) AS rental_end,
+                (SELECT total_amount FROM returns 
+                 WHERE customer_id = rents.customer_id 
+                   AND bike_id = rents.bike_id 
+                   AND rental_end >= rents.rental_start 
+                 ORDER BY rental_end LIMIT 1) AS total_amount
+            FROM rents 
+            JOIN customer c ON rents.customer_id = c.customer_id 
+            LEFT JOIN staff s ON rents.staff_id = s.staff_id 
+            JOIN bike b ON rents.bike_id = b.bike_id 
+            ORDER BY rents.rental_start DESC
+        """
+        rows = self.conn.execute(query).fetchall()
 
         result = []
         for r in rows:
@@ -415,13 +526,35 @@ class Database:
         return result
 
     def get_rental(self, rid):
-        r = self.conn.execute(
-            "SELECT rents.rental_id, rents.customer_id, c.first_name||' '||c.last_name AS customer_name, rents.staff_id, s.first_name||' '||s.last_name AS staff_name, b.bike_code, b.brand, b.model, b.bike_rate AS rental_rate, rents.rental_start, "
-            "(SELECT rental_end FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS rental_end, "
-            "(SELECT total_amount FROM returns WHERE customer_id=rents.customer_id AND bike_id=rents.bike_id AND rental_end >= rents.rental_start ORDER BY rental_end LIMIT 1) AS total_amount "
-            "FROM rents JOIN customer c ON rents.customer_id=c.customer_id LEFT JOIN staff s ON rents.staff_id=s.staff_id JOIN bike b ON rents.bike_id=b.bike_id WHERE rents.rental_id=?",
-            (rid,)
-        ).fetchone()
+        query = """
+            SELECT 
+                rents.rental_id, 
+                rents.customer_id, 
+                c.first_name || ' ' || c.last_name AS customer_name, 
+                rents.staff_id, 
+                s.first_name || ' ' || s.last_name AS staff_name, 
+                b.bike_code, 
+                b.brand, 
+                b.model, 
+                b.bike_rate AS rental_rate, 
+                rents.rental_start,
+                (SELECT rental_end FROM returns 
+                 WHERE customer_id = rents.customer_id 
+                   AND bike_id = rents.bike_id 
+                   AND rental_end >= rents.rental_start 
+                 ORDER BY rental_end LIMIT 1) AS rental_end,
+                (SELECT total_amount FROM returns 
+                 WHERE customer_id = rents.customer_id 
+                   AND bike_id = rents.bike_id 
+                   AND rental_end >= rents.rental_start 
+                 ORDER BY rental_end LIMIT 1) AS total_amount
+            FROM rents 
+            JOIN customer c ON rents.customer_id = c.customer_id 
+            LEFT JOIN staff s ON rents.staff_id = s.staff_id 
+            JOIN bike b ON rents.bike_id = b.bike_id 
+            WHERE rents.rental_id = ?
+        """
+        r = self.conn.execute(query, (rid,)).fetchone()
         if not r:
             return None
         rr = dict(r)
@@ -436,31 +569,27 @@ class Database:
     def create_rental(self, d):
         if not d.get('rental_start'):
             d['rental_start'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        # Insert into rents; store the staff who processed the rental if provided
-        self.conn.execute(
-            "INSERT INTO rents(customer_id,bike_id,rental_start,staff_id) VALUES(?,?,?,?)",
-            (d.get('customer_id'), d.get('bike_id'), d.get('rental_start'), d.get('staff_id'))
-        )
+        query = "INSERT INTO rents (customer_id, bike_id, rental_start, staff_id) VALUES (?, ?, ?, ?)"
+        self.conn.execute(query, (d.get('customer_id'), d.get('bike_id'), d.get('rental_start'), d.get('staff_id')))
         self.conn.commit()
         return self.conn.execute('SELECT last_insert_rowid()').fetchone()[0]
 
     def return_rental(self, rid):
-        # Retrieve rent info from rents and compute total using bike_rate
-        r = self.conn.execute("SELECT rental_start, bike_id, customer_id FROM rents WHERE rental_id=?", (rid,)).fetchone()
+        r = self.conn.execute("SELECT rental_start, bike_id, customer_id FROM rents WHERE rental_id = ?", (rid,)).fetchone()
         if not r:
             return None
         rental_start = datetime.fromisoformat(r['rental_start'])
         rental_end = datetime.now()
         duration_hours = max(1, math.ceil((rental_end - rental_start).total_seconds() / 3600))
-        bike = self.conn.execute("SELECT bike_rate FROM bike WHERE bike_id=?", (r['bike_id'],)).fetchone()
+        bike = self.conn.execute("SELECT bike_rate FROM bike WHERE bike_id = ?", (r['bike_id'],)).fetchone()
         rate = float(bike['bike_rate']) if bike else 0
         total_amount = round(duration_hours * rate, 2)
 
-        # Insert a return record
-        self.conn.execute(
-            "INSERT INTO returns(customer_id,bike_id,rental_end,total_amount) VALUES(?,?,?,?)",
-            (r['customer_id'], r['bike_id'], rental_end.strftime('%Y-%m-%d %H:%M:%S'), total_amount),
-        )
+        query = """
+            INSERT INTO returns (customer_id, bike_id, rental_end, total_amount) 
+            VALUES (?, ?, ?, ?)
+        """
+        self.conn.execute(query, (r['customer_id'], r['bike_id'], rental_end.strftime('%Y-%m-%d %H:%M:%S'), total_amount))
         self.conn.commit()
         return {
             'rental_end': rental_end.strftime('%Y-%m-%d %H:%M:%S'),
@@ -472,38 +601,25 @@ class Database:
         rows = self.get_all_rentals()
         return [r for r in rows if r['status'] in ('active','overdue')]
 
-    def get_dashboard_stats(self):
-        # Compute active and overdue from rents/returns
-        active = self.conn.execute(
-            "SELECT COUNT(*) FROM rents WHERE NOT EXISTS (SELECT 1 FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start)"
-        ).fetchone()[0]
-        overdue = self.conn.execute(
-            "SELECT COUNT(*) FROM rents WHERE NOT EXISTS (SELECT 1 FROM returns WHERE returns.customer_id=rents.customer_id AND returns.bike_id=rents.bike_id AND returns.rental_end >= rents.rental_start) AND rental_start <= datetime('now','localtime','-1 day')"
-        ).fetchone()[0]
-        bikes_available = self.conn.execute("SELECT COUNT(*) FROM bike WHERE status='available'").fetchone()[0]
-        revenue_today = self.conn.execute("SELECT COALESCE(SUM(amount_paid),0) FROM payment WHERE date(payment_date)=date('now','localtime')").fetchone()[0]
-        return {
-            'active_rentals': active,
-            'overdue': overdue,
-            'bikes_available': bikes_available,
-            'revenue_today': revenue_today,
-        }
-
-    # Payments
     def get_all_payments(self):
-        return [dict(r) for r in self.conn.execute(
-            "SELECT p.*, c.first_name||' '||c.last_name AS customer_name, b.bike_code "
-            "FROM payment p JOIN customer c ON p.customer_id=c.customer_id JOIN bike b ON p.bike_id=b.bike_id "
-            "ORDER BY p.payment_date DESC"
-        ).fetchall()]
+        query = """
+            SELECT 
+                p.*, 
+                c.first_name || ' ' || c.last_name AS customer_name, 
+                b.bike_code 
+            FROM payment p 
+            JOIN customer c ON p.customer_id = c.customer_id 
+            JOIN bike b ON p.bike_id = b.bike_id 
+            ORDER BY p.payment_date DESC
+        """
+        return [dict(r) for r in self.conn.execute(query).fetchall()]
 
     def create_payment(self, d):
-        # Accept either rental_id OR customer_id and bike_id
         rental_id = d.get('rental_id') or d.get('rental')
         cust_id = d.get('customer_id')
         bike_id = d.get('bike_id')
         if rental_id and (not cust_id or not bike_id):
-            r = self.conn.execute("SELECT customer_id,bike_id FROM rents WHERE rental_id=?", (rental_id,)).fetchone()
+            r = self.conn.execute("SELECT customer_id, bike_id FROM rents WHERE rental_id = ?", (rental_id,)).fetchone()
             if r:
                 cust_id = r['customer_id']
                 bike_id = r['bike_id']
@@ -511,30 +627,72 @@ class Database:
         if not cust_id or not bike_id:
             raise ValueError('customer_id and bike_id required')
 
-        self.conn.execute(
-            "INSERT INTO payment(customer_id,bike_id,rental_id,amount_paid,payment_method,payment_status) VALUES(?,?,?,?,?,?)",
-            (cust_id, bike_id, rental_id, d.get('amount_paid'), d.get('payment_method'), d.get('payment_status') or 'paid')
-        )
+        query = """
+            INSERT INTO payment (customer_id, bike_id, rental_id, amount_paid, payment_method, payment_status) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """
+        self.conn.execute(query, (cust_id, bike_id, rental_id, d.get('amount_paid'), d.get('payment_method'), d.get('payment_status') or 'paid'))
         self.conn.commit()
         return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def get_payment_for_rental(self, rid):
-        r = self.conn.execute("SELECT * FROM payment WHERE rental_id=?", (rid,)).fetchone()
+        r = self.conn.execute("SELECT * FROM payment WHERE rental_id = ?", (rid,)).fetchone()
         return dict(r) if r else None
 
-    # Activity Log
+    # MISC ----------------------------------------------------------------------------------------------------------------------------------------------
+
     def get_activity_log(self, limit=200):
-        rows = self.conn.execute(
-            "SELECT l.*,s.first_name||' '||s.last_name AS staff_name,s.role AS staff_role "
-            "FROM activity_log l JOIN staff s ON l.staff_id=s.staff_id "
-            "ORDER BY l.timestamp DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        query = """
+            SELECT 
+                l.*, 
+                s.first_name || ' ' || s.last_name AS staff_name, 
+                s.role AS staff_role 
+            FROM activity_log l 
+            JOIN staff s ON l.staff_id = s.staff_id 
+            ORDER BY l.timestamp DESC 
+            LIMIT ?
+        """
+        rows = self.conn.execute(query, (limit,)).fetchall()
         return [dict(r) for r in rows]
 
     def log_action(self, staff_id, action, target_table=None, target_id=None):
-        self.conn.execute("INSERT INTO activity_log(staff_id,action,target_table,target_id) VALUES(?,?,?,?)", (staff_id, action, target_table, target_id))
+        query = "INSERT INTO activity_log (staff_id, action, target_table, target_id) VALUES (?, ?, ?, ?)"
+        self.conn.execute(query, (staff_id, action, target_table, target_id))
         self.conn.commit()
+
+    def get_dashboard_stats(self):
+        query_active = """
+            SELECT COUNT(*) FROM rents 
+            WHERE NOT EXISTS (
+                SELECT 1 FROM returns 
+                WHERE returns.customer_id = rents.customer_id 
+                  AND returns.bike_id = rents.bike_id 
+                  AND returns.rental_end >= rents.rental_start
+            )
+        """
+        active = self.conn.execute(query_active).fetchone()[0]
+        
+        query_overdue = """
+            SELECT COUNT(*) FROM rents 
+            WHERE NOT EXISTS (
+                SELECT 1 FROM returns 
+                WHERE returns.customer_id = rents.customer_id 
+                  AND returns.bike_id = rents.bike_id 
+                  AND returns.rental_end >= rents.rental_start
+            ) 
+            AND rental_start <= datetime('now', 'localtime', '-1 day')
+        """
+        overdue = self.conn.execute(query_overdue).fetchone()[0]
+        
+        bikes_available = self.conn.execute("SELECT COUNT(*) FROM bike WHERE status = 'available'").fetchone()[0]
+        revenue_today = self.conn.execute("SELECT COALESCE(SUM(amount_paid), 0) FROM payment WHERE date(payment_date) = date('now', 'localtime')").fetchone()[0]
+        
+        return {
+            'active_rentals': active,
+            'overdue': overdue,
+            'bikes_available': bikes_available,
+            'revenue_today': revenue_today,
+        }
 
 def init():
     global db
