@@ -1,6 +1,6 @@
 import sqlite3
 import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import modules.appFileHandler as appFileHandler
@@ -223,6 +223,8 @@ class Database:
         if row and not self._column_exists('rents', 'staff_id'):
             self.conn.execute("ALTER TABLE rents ADD COLUMN staff_id INTEGER")
             self.conn.execute("CREATE INDEX IF NOT EXISTS idx_rents_staff ON rents(staff_id)")
+        if row and not self._column_exists('rents', 'planned_return'):
+            self.conn.execute("ALTER TABLE rents ADD COLUMN planned_return DATETIME")
         self.conn.commit()
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -335,6 +337,7 @@ class Database:
                 rents.staff_id, 
                 s.first_name || ' ' || s.last_name AS staff_name, 
                 rents.rental_start,
+                rents.planned_return,
                 b.bike_code, 
                 b.brand, 
                 b.model, 
@@ -363,7 +366,7 @@ class Database:
             rr = dict(r)
             if rr['rental_end'] is not None:
                 rr['status'] = 'returned'
-            elif rr['rental_start'] <= (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'):
+            elif rr.get('planned_return') and datetime.now() > datetime.fromisoformat(rr['planned_return']):
                 rr['status'] = 'overdue'
             else:
                 rr['status'] = 'active'
@@ -477,6 +480,29 @@ class Database:
         self.conn.commit()
         return True, 'Bike retired successfully.'
 
+    def get_current_renter_for_bike(self, bid):
+        query = """
+            SELECT
+                rents.rental_id,
+                rents.rental_start,
+                rents.planned_return,
+                c.customer_id,
+                c.first_name || ' ' || c.last_name AS customer_name
+            FROM rents
+            JOIN customer c ON rents.customer_id = c.customer_id
+            WHERE rents.bike_id = ?
+            AND NOT EXISTS (
+                SELECT 1 FROM returns
+                WHERE returns.customer_id = rents.customer_id
+                    AND returns.bike_id = rents.bike_id
+                    AND returns.rental_end >= rents.rental_start
+            )
+            ORDER BY rents.rental_start DESC
+            LIMIT 1
+        """
+        r = self.conn.execute(query, (bid,)).fetchone()
+        return dict(r) if r else None
+
     # RENTALS ----------------------------------------------------------------------------------------------------------------------------------------------
 
     def get_all_rentals(self, status="all"):
@@ -492,6 +518,7 @@ class Database:
                 b.model, 
                 b.bike_rate AS rental_rate, 
                 rents.rental_start,
+                rents.planned_return,
                 (SELECT rental_end FROM returns 
                  WHERE customer_id = rents.customer_id 
                    AND bike_id = rents.bike_id 
@@ -515,7 +542,7 @@ class Database:
             rr = dict(r)
             if rr['rental_end'] is not None:
                 rr['status'] = 'returned'
-            elif rr['rental_start'] <= (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'):
+            elif rr.get('planned_return') and datetime.now() > datetime.fromisoformat(rr['planned_return']):
                 rr['status'] = 'overdue'
             else:
                 rr['status'] = 'active'
@@ -538,6 +565,7 @@ class Database:
                 b.model, 
                 b.bike_rate AS rental_rate, 
                 rents.rental_start,
+                rents.planned_return,
                 (SELECT rental_end FROM returns 
                  WHERE customer_id = rents.customer_id 
                    AND bike_id = rents.bike_id 
@@ -560,7 +588,7 @@ class Database:
         rr = dict(r)
         if rr['rental_end'] is not None:
             rr['status'] = 'returned'
-        elif rr['rental_start'] <= (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'):
+        elif rr.get('planned_return') and datetime.now() > datetime.fromisoformat(rr['planned_return']):
             rr['status'] = 'overdue'
         else:
             rr['status'] = 'active'
@@ -569,33 +597,38 @@ class Database:
     def create_rental(self, d):
         if not d.get('rental_start'):
             d['rental_start'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        query = "INSERT INTO rents (customer_id, bike_id, rental_start, staff_id) VALUES (?, ?, ?, ?)"
-        self.conn.execute(query, (d.get('customer_id'), d.get('bike_id'), d.get('rental_start'), d.get('staff_id')))
+        query = "INSERT INTO rents (customer_id, bike_id,   rental_start, staff_id, planned_return) VALUES (?, ?, ?, ?, ?)"
+        self.conn.execute(query, (d.get('customer_id'), d.get('bike_id'), d.get('rental_start'), d.get('staff_id'), d.get('planned_return')))
         self.conn.commit()
         return self.conn.execute('SELECT last_insert_rowid()').fetchone()[0]
 
     def return_rental(self, rid):
-        r = self.conn.execute("SELECT rental_start, bike_id, customer_id FROM rents WHERE rental_id = ?", (rid,)).fetchone()
+        r = self.conn.execute("SELECT rental_start, bike_id, customer_id, planned_return FROM rents WHERE rental_id = ?", (rid,)).fetchone()
         if not r:
             return None
         rental_start = datetime.fromisoformat(r['rental_start'])
         rental_end = datetime.now()
-        duration_hours = max(1, math.ceil((rental_end - rental_start).total_seconds() / 3600))
         bike = self.conn.execute("SELECT bike_rate FROM bike WHERE bike_id = ?", (r['bike_id'],)).fetchone()
         rate = float(bike['bike_rate']) if bike else 0
-        total_amount = round(duration_hours * rate, 2)
 
-        query = """
-            INSERT INTO returns (customer_id, bike_id, rental_end, total_amount) 
-            VALUES (?, ?, ?, ?)
-        """
+        planned_return = datetime.fromisoformat(r['planned_return']) if r['planned_return'] else None
+
+        if planned_return and rental_end > planned_return:
+            normal_hours = max(1, math.ceil((planned_return - rental_start).total_seconds() / 3600))
+            overtime_hours = math.ceil((rental_end - planned_return).total_seconds() / 3600)
+            total_amount = round((normal_hours * rate) + (overtime_hours * rate * 1.5), 2)
+        else:
+            duration_hours = max(1, math.ceil((rental_end - rental_start).total_seconds() / 3600))
+            total_amount = round(duration_hours * rate, 2)
+
+        query = "INSERT INTO returns (customer_id, bike_id, rental_end, total_amount) VALUES (?, ?, ?, ?)"
         self.conn.execute(query, (r['customer_id'], r['bike_id'], rental_end.strftime('%Y-%m-%d %H:%M:%S'), total_amount))
         self.conn.commit()
         return {
             'rental_end': rental_end.strftime('%Y-%m-%d %H:%M:%S'),
             'total_amount': total_amount,
-            'duration_hours': duration_hours,
         }
+
 
     def get_active_rentals(self):
         rows = self.get_all_rentals()
@@ -680,7 +713,7 @@ class Database:
                   AND returns.bike_id = rents.bike_id 
                   AND returns.rental_end >= rents.rental_start
             ) 
-            AND rental_start <= datetime('now', 'localtime', '-1 day')
+            AND planned_return <= datetime('now', 'localtime')
         """
         overdue = self.conn.execute(query_overdue).fetchone()[0]
         

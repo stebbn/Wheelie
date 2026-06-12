@@ -28,6 +28,7 @@ def new_rental():
             'bike_id': request.form.get('bike_id'),
             'staff_id': session.get("staff_id"),
             'rental_rate': bike["bike_rate"],
+            'planned_return': datetime.strptime(request.form.get('planned_return'), '%Y-%m-%dT%H:%M').strftime('%Y-%m-%d %H:%M:%S'),
         }
         rid = database.get().create_rental(data)
         database.get().log_action(session.get("staff_id"), "create", "rental", rid)
@@ -62,7 +63,16 @@ def rental_detail(rid):
     preview_amount = None
     if rental and rental['status'] in ['active', 'overdue']:
         rental_start = datetime.fromisoformat(rental['rental_start'])
-        duration_hours = max(1, math.ceil((datetime.now() - rental_start).total_seconds() / 3600))
-        preview_amount = round(duration_hours * float(rental['rental_rate']), 2)
+        now = datetime.now()
+        rate = float(rental['rental_rate'])
+        planned_return = datetime.fromisoformat(rental['planned_return']) if rental.get('planned_return') else None
+
+        if planned_return and now > planned_return:
+            normal_hours = max(1, math.ceil((planned_return - rental_start).total_seconds() / 3600))
+            overtime_hours = math.ceil((now - planned_return).total_seconds() / 3600)
+            preview_amount = round((normal_hours * rate) + (overtime_hours * rate * 1.5), 2)
+        else:
+            duration_hours = max(1, math.ceil((now - rental_start).total_seconds() / 3600))
+            preview_amount = round(duration_hours * rate, 2)
 
     return render_template('rental_detail.html', rental=rental, payment=payment, preview_amount=preview_amount)

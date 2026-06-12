@@ -5,7 +5,7 @@
 {% block content %}
 
 <h1>Bike {{ bike['bike_code'] }}</h1>
-<div class="detail-container">
+<div class="detail-container">  
     <div class="detail-section">
         <h2>Bike Information</h2>
         <div class="detail-grid">
@@ -54,5 +54,36 @@
             {% endif %}
         </div>
     </div>
+    {% if current_renter %}
+    <div class="detail-section">
+        <h2>Currently Rented By</h2>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">Customer:</span>
+                <span class="value">
+                    <a href="{{ url_for('customers.customer_detail', cid=current_renter['customer_id']) }}">
+                        {{ current_renter['customer_name'] }}
+                    </a>
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Rental Start:</span>
+                <span class="value">{{ current_renter['rental_start'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Planned Return:</span>
+                <span class="value">{{ current_renter['planned_return'] or 'Not set' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Rental:</span>
+                <span class="value">
+                    <a href="{{ url_for('rentals.rental_detail', rid=current_renter['rental_id']) }}">
+                        View Rental #{{ current_renter['rental_id'] }}
+                    </a>
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

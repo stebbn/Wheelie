@@ -16,7 +16,10 @@ def registry():
 @login_required
 def bike_detail(bid):
     bike = database.get().get_bike(bid)
-    return render_template('bike_detail.html', bike=bike)
+    current_renter = None
+    if bike and bike['status'] == 'rented':
+        current_renter = database.get().get_current_renter_for_bike(bid)
+    return render_template('bike_detail.html', bike=bike, current_renter=current_renter)
 
 @bikes_bp.route('/bike/new', methods=['GET', 'POST'])
 @login_required

@@ -25,6 +25,10 @@
                 <span class="value">{{ rental['rental_start'] }}</span>
             </div>
             <div class="detail-item">
+                <span class="label">Planned Return:</span>
+                <span class="value">{{ rental['planned_return'] or 'Not set' }}</span>
+            </div>
+            <div class="detail-item">
                 <span class="label">End Date:</span>
                 <span class="value">{{ rental['rental_end'] or 'Not Returned' }}</span>
             </div>
