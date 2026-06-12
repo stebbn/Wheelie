@@ -5,6 +5,9 @@
 
 # files
 *.db
+data/ids
+*.db-shm
+*db-wal
 
 # C extensions
 *.so
