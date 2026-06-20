@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="detail-item">
                 <span class="label">Status:</span>
-                <span class="value">{{ payment['payment_status'].title() }}</span>
+                <span class="status-badge status-{{ payment['payment_status'] }}">{{ payment['payment_status'].title() }}</span>
             </div>
         </div>
         <a href="{{ url_for('rentals.rentals') }}" class="btn-secondary">Back to Rentals</a>
