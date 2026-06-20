@@ -593,12 +593,9 @@ table a:hover {
     color: white;
 }
 
+.status-badge.status-inactive,
+.status-badge.status-retired,
 .status-badge.status-overdue {
-    background-color: #f44336;
-    color: white;
-}
-
-.status-badge.status-retired {
     background-color: #f44336;
     color: white;
 }

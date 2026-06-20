@@ -90,8 +90,8 @@ class Database:
             rental_id INTEGER,
             payment_date DATETIME NOT NULL DEFAULT(datetime('now','localtime')),
             amount_paid DECIMAL(10,2) NOT NULL,
-            payment_method TEXT,
-            payment_status TEXT DEFAULT 'paid',
+            payment_method TEXT NOT NULL CHECK(payment_method IN('cash', 'gcash', 'card')),
+            payment_status TEXT NOT NULL DEFAULT 'paid' CHECK(payment_status IN('paid', 'pending', 'refunded')),
             FOREIGN KEY(customer_id) REFERENCES customer(customer_id) ON DELETE CASCADE,
             FOREIGN KEY(bike_id) REFERENCES bike(bike_id) ON DELETE CASCADE
         );
