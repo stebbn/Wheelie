@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash
 
@@ -13,17 +15,24 @@ def staff_list():
     return render_template('staff.html', staff_members=staff_members, current_staff_id=session.get("staff_id"))
 
 
+def _valid_phone_number(number):
+    return bool(number and re.fullmatch(r'09\d{9}', number))
+
 @staff_bp.route('/staff/new', methods=['GET', 'POST'])
 @role_required('admin')
 def new_staff():
     if request.method == 'POST':
+        contact_number = request.form.get('contact_number')
+        if not _valid_phone_number(contact_number):
+            return render_template('forms/staff_form.html', staff_member=None, error='Enter a 10-digit mobile number starting with 09.')
+
         data = {
             'username': request.form.get('username'),
             'password_hash': generate_password_hash(request.form.get('password')),
             'first_name': request.form.get('first_name'),
             'last_name': request.form.get('last_name'),
             'role': request.form.get('role'),
-            'contact_number': request.form.get('contact_number')
+            'contact_number': contact_number
         }
         sid = database.get().create_staff(data)
         database.get().log_action(session.get("staff_id"), "create", "staff", sid)
@@ -44,12 +53,16 @@ def edit_staff(sid):
         if sid == session.get("staff_id") and status != "active":
             status = "active"
 
+        contact_number = request.form.get('contact_number')
+        if not _valid_phone_number(contact_number):
+            return render_template('forms/staff_form.html', staff_member=staff_member, error='Enter a 10-digit mobile number starting with 09.')
+
         data = {
             'username': request.form.get('username'),
             'first_name': request.form.get('first_name'),
             'last_name': request.form.get('last_name'),
             'role': request.form.get('role'),
-            'contact_number': request.form.get('contact_number'),
+            'contact_number': contact_number,
             'status': status
         }
         database.get().update_staff(sid, data)
