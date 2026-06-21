@@ -27,7 +27,7 @@
             {% for customer in customers %}
             <tr>
                 <td>{{ customer['first_name'] }} {{ customer['last_name'] }}</td>
-                <td>{{ customer['contact_number'] }}</td>
+                <td>{{ customer['contact_number'][:4] }} {{ customer['contact_number'][4:7] }} {{ customer['contact_number'][7:] }}</td>
                 <td>{{ customer['email'] or '-' }}</td>
                 <td>{{ customer['date_registered'] }}</td>
                 <td><a href="{{ url_for('customers.customer_detail', cid=customer['customer_id']) }}">View</a></td>
