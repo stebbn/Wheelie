@@ -160,10 +160,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const rateField = document.getElementById('rental_rate_display');
+    const plannedReturnInput = document.getElementById('planned_return');
+
+    function setPlannedReturnMin() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 1);
+        const pad = value => String(value).padStart(2, '0');
+        const minValue = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        plannedReturnInput.min = minValue;
+    }
 
     document.getElementById('bike_id').addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
         rateField.value = selected ? selected.dataset.rate || '' : '';
+    });
+
+    openBtn.addEventListener('click', () => {
+        setPlannedReturnMin();
+        modal.show();
     });
 
     rentalForm.addEventListener('submit', function(event) {
@@ -171,6 +185,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!customerIdField.value) {
             alert('Please select a customer.');
+            return;
+        }
+
+        if (!plannedReturnInput.value) {
+            alert('Please select a planned return date and time.');
+            return;
+        }
+
+        const plannedReturnDate = new Date(plannedReturnInput.value);
+        if (plannedReturnDate <= new Date()) {
+            alert('Planned return must be in the future.');
             return;
         }
 

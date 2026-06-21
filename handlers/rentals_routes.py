@@ -23,12 +23,25 @@ def new_rental():
         bike = database.get().get_bike(request.form.get('bike_id'))
         if not bike:
             return jsonify({'success': False, 'message': 'Bike not found.'}), 400
+
+        planned_return_input = request.form.get('planned_return')
+        if not planned_return_input:
+            return jsonify({'success': False, 'message': 'Planned return date is required.'}), 400
+
+        try:
+            planned_return_dt = datetime.strptime(planned_return_input, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid planned return date format.'}), 400
+
+        if planned_return_dt < datetime.now():
+            return jsonify({'success': False, 'message': 'Planned return must be in the future.'}), 400
+
         data = {
             'customer_id': request.form.get('customer_id'),
             'bike_id': request.form.get('bike_id'),
             'staff_id': session.get("staff_id"),
             'rental_rate': bike["bike_rate"],
-            'planned_return': datetime.strptime(request.form.get('planned_return'), '%Y-%m-%dT%H:%M').strftime('%Y-%m-%d %H:%M:%S'),
+            'planned_return': planned_return_dt.strftime('%Y-%m-%d %H:%M:%S'),
         }
         rid = database.get().create_rental(data)
         database.get().log_action(session.get("staff_id"), "create", "rental", rid)
