@@ -61,7 +61,7 @@
                 <form method="post" id="bikeForm" action="{{ url_for('bikes.new_bike') }}">
                     <div class="mb-3">
                         <label for="bike_code" class="form-label">Bike Code</label>
-                        <input type="text" class="form-control" id="bike_code" name="bike_code" required>
+                        <input type="text" class="form-control" id="bike_code" name="bike_code" value="{{ next_bike_code }}" readonly>
                     </div>
                     <div class="mb-3">
                         <label for="brand" class="form-label">Brand</label>

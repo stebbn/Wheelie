@@ -1,5 +1,6 @@
 import sqlite3
 import math
+import re
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -428,6 +429,19 @@ class Database:
         query = "SELECT * FROM bike WHERE bike_id = ?"
         r = self.conn.execute(query, (bid,)).fetchone()
         return dict(r) if r else None
+
+    def get_next_bike_code(self):
+        query = "SELECT bike_code FROM bike WHERE bike_code GLOB 'BK-[0-9]*' ORDER BY CAST(SUBSTR(bike_code, 4) AS INTEGER) DESC LIMIT 1"
+        r = self.conn.execute(query).fetchone()
+        if not r:
+            return 'BK-001'
+        last_code = r['bike_code']
+        m = re.match(r'^BK-(\d+)$', last_code)
+        if not m:
+            return 'BK-001'
+        next_num = int(m.group(1)) + 1
+        width = max(len(m.group(1)), 3)
+        return f"BK-{next_num:0{width}d}"
 
     def get_available_bikes(self):
         query = "SELECT * FROM bike WHERE status = 'available' ORDER BY bike_code"

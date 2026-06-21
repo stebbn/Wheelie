@@ -15,7 +15,7 @@
                 <form method="post" id="bikeForm">
                     <div class="mb-3">
                         <label for="bike_code" class="form-label">Bike Code</label>
-                        <input type="text" class="form-control" id="bike_code" name="bike_code" value="{{ bike['bike_code'] if bike else '' }}" required>
+                        <input type="text" class="form-control" id="bike_code" name="bike_code" value="{{ bike['bike_code'] if bike else next_bike_code }}" readonly required>
                     </div>
                     <div class="mb-3">
                         <label for="brand" class="form-label">Brand</label>

@@ -10,7 +10,8 @@ def registry():
     search = request.args.get('search', '')
     status = request.args.get('status', 'all')
     all_bikes = database.get().get_all_bikes(search, status)
-    return render_template('bike_registry.html', bikes=all_bikes, search=search, filter_status=status)
+    next_bike_code = database.get().get_next_bike_code()
+    return render_template('bike_registry.html', bikes=all_bikes, search=search, filter_status=status, next_bike_code=next_bike_code)
 
 @bikes_bp.route('/bike/<int:bid>')
 @login_required
@@ -24,9 +25,10 @@ def bike_detail(bid):
 @bikes_bp.route('/bike/new', methods=['GET', 'POST'])
 @login_required
 def new_bike():
+    next_bike_code = database.get().get_next_bike_code()
     if request.method == 'POST':
         data = {
-            'bike_code': request.form.get('bike_code'),
+            'bike_code': database.get().get_next_bike_code(),
             'brand': request.form.get('brand'),
             'model': request.form.get('model'),
             'size': request.form.get('size'),
@@ -37,7 +39,7 @@ def new_bike():
         bid = database.get().create_bike(data)
         database.get().log_action(session.get("staff_id"), "create", "bike", bid)
         return redirect(url_for('bikes.bike_detail', bid=bid))
-    return render_template('forms/bike_form.html', bike=None)
+    return render_template('forms/bike_form.html', bike=None, next_bike_code=next_bike_code)
 
 @bikes_bp.route('/bike/<int:bid>/edit', methods=['GET', 'POST'])
 @login_required
