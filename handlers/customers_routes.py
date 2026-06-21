@@ -35,11 +35,15 @@ def _save_valid_id(file):
 def new_customer():
     if request.method == 'POST':
         valid_id_path = _save_valid_id(request.files.get("valid_id"))
+        email = request.form.get('email')
+        if not email:
+            return render_template('forms/customer_form.html', customer=None, error='Email is required.')
+
         data = {
             'first_name': request.form.get('first_name'),
             'last_name': request.form.get('last_name'),
             'contact_number': request.form.get('contact_number'),
-            'email': request.form.get('email') or None,
+            'email': email,
             'staff_id': session.get("staff_id"),
             'valid_id': valid_id_path
         }
