@@ -37,7 +37,10 @@
                     </div>
                     <div class="mb-3">
                         <label for="contact_number" class="form-label">Contact Number</label>
-                        <input type="tel" class="form-control" id="contact_number" name="contact_number" value="{{ staff_member['contact_number'] if staff_member else '' }}" inputmode="numeric" pattern="[0-9]+" required>
+                        <input type="tel" class="form-control" id="contact_number" name="contact_number" value="{{ staff_member['contact_number'] if staff_member else '' }}" inputmode="numeric" pattern="09[0-9]{9}" title="Enter a 10-digit mobile number" required>
+                        {% if error %}
+                        <div class="form-text text-danger">{{ error }}</div>
+                        {% endif %}
                     </div>
                     {% if staff_member %}
                     <div class="mb-3">
